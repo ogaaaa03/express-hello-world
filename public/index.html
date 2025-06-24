@@ -8,7 +8,7 @@
       .chat {
         display: flex;
         flex-direction: column;
-        height: 100vh;
+        height: 80vh;
       }
       .messages {
         flex: 1;
@@ -41,11 +41,99 @@
         <button class="submit">Send</button>
       </form>
     </div>
+    <canvas
+      id="canvas"
+      width="600"
+      height="600"
+      style="border: solid 1px black"
+    ></canvas>
 
     <script>
       function main() {
         const host = location.origin.replace(/^http/, 'ws')
         const ws = new WebSocket(host + '/ws')
+        const myId = self.crypto.randomUUID().substr(0, 8)
+
+        const canvas = document.getElementById('canvas')
+        const ctx = canvas.getContext('2d')
+
+        let drawing = false
+
+        canvas.addEventListener('mousedown', (e) => {
+          sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown')
+        })
+        function mousedown() {
+          drawing = true
+          ctx.beginPath()
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+          if (drawing) {
+            sendDrawingEvent(e.offsetX, e.offsetY, 'mousemove')
+          }
+        })
+        function mousemove(x, y) {
+          if (drawing) {
+            draw(x, y, true)
+          }
+        }
+
+        canvas.addEventListener('mouseup', (e) => {
+          sendDrawingEvent(e.offsetX, e.offsetY, 'mouseup')
+        })
+        function mouseup() {
+          drawing = false
+          ctx.beginPath()
+        }
+
+        canvas.addEventListener('mouseout', (e) => {
+          sendDrawingEvent(e.offsetX, e.offsetY, 'mouseout')
+        })
+        function mouseout() {
+          drawing = false
+        }
+
+        function draw(x, y, dragging) {
+          if (dragging) {
+            ctx.lineTo(x, y)
+            ctx.stroke()
+          } else {
+            ctx.moveTo(x, y)
+          }
+        }
+
+        function sendDrawingEvent(x, y, control) {
+          const message = JSON.stringify({ x, y, control, type: 'paint' })
+          ws.send(message)
+        }
+
+        ws.onmessage = (event) => {
+          const msg = JSON.parse(event.data)
+          if (msg.type === 'paint') {
+            const { x, y, control } = msg
+            console.log({ control })
+            if (control === 'mousedown') {
+              mousedown()
+            } else if (control === 'mouseup') {
+              mouseup()
+            } else if (control === 'mousemove') {
+              mousemove(x, y)
+            } else if (control === 'mouseout') {
+              mouseout()
+            }
+          }
+          if (msg.type === 'chat') {
+            const { id, text } = msg
+            const messageList = document.querySelector('.messages')
+            const li = document.createElement('li')
+            if (id === myId) {
+              li.textContent = `(${id})自分:` + text
+            } else {
+              li.textContent = id + ': ' + text
+            }
+            messageList.appendChild(li)
+          }
+        }
 
         const form = document.querySelector('.form')
 
@@ -53,17 +141,9 @@
           e.preventDefault()
           const input = document.querySelector('.input')
           const text = input.value
-          ws.send(text)
+          ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
           input.value = ''
           input.focus()
-        }
-
-        ws.onmessage = function (msg) {
-          const response = msg.data
-          const messageList = document.querySelector('.messages')
-          const li = document.createElement('li')
-          li.textContent = response
-          messageList.appendChild(li)
         }
 
         ws.onerror = function (error) {
