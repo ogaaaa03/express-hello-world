@@ -1,157 +1,322 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chat App</title>
-    <style>
-      .chat {
-        display: flex;
-        flex-direction: column;
-        height: 80vh;
-      }
-      .messages {
-        flex: 1;
-        overflow-y: auto;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      .form {
-        display: flex;
-      }
-      .input {
-        flex: 1;
-        padding: 10px;
-        border: 1px solid #ccc;
-      }
-      .submit {
-        padding: 10px;
-        border: 1px solid #ccc;
-        background: #eee;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="chat">
-      <ul class="messages"></ul>
-      <form class="form">
-        <input class="input" autocomplete="off" />
-        <button class="submit">Send</button>
-      </form>
-    </div>
-    <canvas
-      id="canvas"
-      width="600"
-      height="600"
-      style="border: solid 1px black"
-    ></canvas>
 
-    <script>
-      function main() {
-        const host = location.origin.replace(/^http/, 'ws')
-        const ws = new WebSocket(host + '/ws')
-        const myId = self.crypto.randomUUID().substr(0, 8)
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat App</title>
+  <style>
+    .chat {
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+    }
 
-        const canvas = document.getElementById('canvas')
-        const ctx = canvas.getContext('2d')
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
-        let drawing = false
+    /* 自分のメッセージは右寄せ(カワグチ) */
+    .my-message {
+      align-self: flex-end;
+      margin-left: auto;
+      text-align: right;
+    }
 
-        canvas.addEventListener('mousedown', (e) => {
-          sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown')
-        })
-        function mousedown() {
-          drawing = true
-          ctx.beginPath()
+    /* 自分以外のメッセージは左寄せ(カワグチ) */
+    .other-message {
+      align-self: flex-start;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .form {
+      display: flex;
+    }
+
+    .input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .submit {
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #eee;
+      cursor: pointer;
+    }
+
+    /* 横並び(オタニ追加) */
+    .box {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    /* [type="color"] ピッカーの見た目を変更(オタニ追加) */
+    input[type="color"] {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: inline-block;
+      margin-right: 18px;
+      border: 1px solid rgb(0, 0, 0);
+      border-radius: 50%;
+    }
+
+    input[type="color"]::-webkit-color-swatch,
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      border: none;
+      padding: 0;
+      border-radius: 50%;
+    }
+
+    /* [type="text"] コード入力エリアの見た目を変更(オタニ追加) */
+    input[type="text"] {
+      border: 1px solid rgb(0, 0, 0);
+      padding: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="chat">
+    <ul class="messages"></ul>
+    <form class="form">
+      <input class="input" autocomplete="off" />
+      <button class="submit">Send</button>
+    </form>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <!-- ラウンド数選択(プルダウン方式)(カワグチ) -->
+    <label>
+      ラウンド数:
+      <select id="roundSelect">
+        <option value="1">1</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+      </select>
+    </label>
+    <!-- ターン数選択(プルダウン方式)(カワグチ) -->
+    <label style="margin-left: 20px;">
+      ターン数:
+      <select id="turnSelect">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+      </select>
+    </label>
+    <!-- ゲーム開始ボタン(カワグチ) -->
+    <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
+
+  </div>
+  <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
+  <label>
+    線の太さ:
+    <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
+  </label>
+  <input type="color" value="#000000">
+
+  <script>
+    function main() {
+      // myIdを自分で入力するように変更(入力なしならランダム)(カワグチ)
+      const myId = prompt("ユーザー名を入力してください")?.trim() || self.crypto.randomUUID().substr(0, 8);
+      const host = location.origin.replace(/^http/, 'ws')
+      const ws = new WebSocket(host + '/ws')
+
+      //入室しているユーザー管理(重複を許さない)(カワグチ)
+      let players = new Set()
+
+      //ボタンとチャットしている場所の管理(カワグチ)
+      const startButton = document.getElementById('startButton')
+      const chatArea = document.querySelector('.chat')
+
+      // 現在の入室人数を表示をする関数(カワグチ)
+      function updatePlayerCountDisplay() {
+        let countSpan = document.getElementById('playerCountSpan')
+
+        if (!countSpan) {
+          countSpan = document.createElement('span')
+          countSpan.id = 'playerCountSpan'
+          countSpan.style.marginLeft = '10px'
+          startButton.parentNode.insertBefore(countSpan, startButton.nextSibling)
         }
+        countSpan.textContent = `入室人数: ${players.size} 人`
+      }
 
-        canvas.addEventListener('mousemove', (e) => {
-          if (drawing) {
-            sendDrawingEvent(e.offsetX, e.offsetY, 'mousemove')
+      // ゲーム開始ボタンが押されたら(カワグチ)
+      startButton.onclick = () => {
+        const round = document.getElementById('roundSelect').value
+        const turn = document.getElementById('turnSelect').value
+        const playerCount = players.size
+
+        const confirmed = confirm(
+          `入室人数: ${playerCount}人\nラウンド数: ${round}ラウンド\nターン数: ${turn}ターン\n\nゲームを開始しますか？`
+        )
+
+        if (confirmed) {
+          ws.send(JSON.stringify({ type: 'start' }))
+        }
+      }
+
+      const canvas = document.getElementById('canvas')
+      const ctx = canvas.getContext('2d')
+
+      //ColorPickerをcanvasに反映させる(オタニ追加)
+      const colorPicker = document.querySelector('input[type="color"]');
+      ctx.strokeStyle = colorPicker.value; // 初期色の設定
+      colorPicker.addEventListener('input', () => {
+        ctx.strokeStyle = colorPicker.value;
+      });
+
+      let drawing = false
+
+      canvas.addEventListener('mousedown', (e) => {
+        sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown')
+      })
+      function mousedown() {
+        drawing = true
+        ctx.beginPath()
+      }
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (drawing) {
+          sendDrawingEvent(e.offsetX, e.offsetY, 'mousemove')
+        }
+      })
+      function mousemove(x, y) {
+        if (drawing) {
+          draw(x, y, true)
+        }
+      }
+
+      canvas.addEventListener('mouseup', (e) => {
+        sendDrawingEvent(e.offsetX, e.offsetY, 'mouseup')
+      })
+      function mouseup() {
+        drawing = false
+        ctx.beginPath()
+      }
+
+      canvas.addEventListener('mouseout', (e) => {
+        sendDrawingEvent(e.offsetX, e.offsetY, 'mouseout')
+      })
+      function mouseout() {
+        drawing = false
+      }
+
+      function draw(x, y, dragging) {
+        if (dragging) {
+          ctx.lineTo(x, y)
+          ctx.stroke()
+        } else {
+          ctx.moveTo(x, y)
+        }
+      }
+
+      function sendDrawingEvent(x, y, control) {
+        const message = JSON.stringify({ x, y, control, type: 'paint' })
+        ws.send(message)
+      }
+
+      // 接続時に参加したことえお知らせる(カワグチ)
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'join', id: myId }))
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'paint') {
+          const { x, y, control } = msg
+          console.log({ control })
+          if (control === 'mousedown') {
+            mousedown()
+          } else if (control === 'mouseup') {
+            mouseup()
+          } else if (control === 'mousemove') {
+            mousemove(x, y)
+          } else if (control === 'mouseout') {
+            mouseout()
           }
-        })
-        function mousemove(x, y) {
-          if (drawing) {
-            draw(x, y, true)
-          }
         }
 
-        canvas.addEventListener('mouseup', (e) => {
-          sendDrawingEvent(e.offsetX, e.offsetY, 'mouseup')
-        })
-        function mouseup() {
-          drawing = false
-          ctx.beginPath()
+        //プレイヤー情報が送られてきたら(カワグチ)
+        if (msg.type === 'players') {
+          players = new Set(msg.players)
+          //入室人数の更新
+          updatePlayerCountDisplay()
+          return
         }
 
-        canvas.addEventListener('mouseout', (e) => {
-          sendDrawingEvent(e.offsetX, e.offsetY, 'mouseout')
-        })
-        function mouseout() {
-          drawing = false
+        //スタートボタンが押されたら(カワグチ)
+        if (msg.type === 'start') {
+          //画面切り替え(チャット画面、ターン・ラウンド選択ボタンを消す)
+          chatArea.style.display = 'none'
+          canvas.style.display = 'block'
+
+          document.getElementById('roundSelect').parentElement.style.display = 'none'
+          document.getElementById('turnSelect').parentElement.style.display = 'none'
+          document.getElementById('startButton').style.display = 'none'
         }
 
-        function draw(x, y, dragging) {
-          if (dragging) {
-            ctx.lineTo(x, y)
-            ctx.stroke()
+        //メッセージ送ったときの挙動の関数(カワグチ)
+        function appendMessage(id, text, myId) {
+          const messageList = document.querySelector('.messages')
+          const li = document.createElement('li')
+          li.textContent = id + ': ' + text
+          if (id === myId) {
+            li.className = 'my-message'
           } else {
-            ctx.moveTo(x, y)
+            li.className = 'other-message'
           }
+          messageList.appendChild(li)
         }
 
-        function sendDrawingEvent(x, y, control) {
-          const message = JSON.stringify({ x, y, control, type: 'paint' })
-          ws.send(message)
+        if (msg.type === 'chat') {
+          const { id, text } = msg
+          //appendMessage関数でまとめた(カワグチ)
+          appendMessage(msg.id, msg.text, myId)
         }
 
-        ws.onmessage = (event) => {
-          const msg = JSON.parse(event.data)
-          if (msg.type === 'paint') {
-            const { x, y, control } = msg
-            console.log({ control })
-            if (control === 'mousedown') {
-              mousedown()
-            } else if (control === 'mouseup') {
-              mouseup()
-            } else if (control === 'mousemove') {
-              mousemove(x, y)
-            } else if (control === 'mouseout') {
-              mouseout()
-            }
-          }
-          if (msg.type === 'chat') {
-            const { id, text } = msg
-            const messageList = document.querySelector('.messages')
-            const li = document.createElement('li')
-            if (id === myId) {
-              li.textContent = `(${id})自分:` + text
-            } else {
-              li.textContent = id + ': ' + text
-            }
-            messageList.appendChild(li)
-          }
-        }
-
-        const form = document.querySelector('.form')
-
-        form.onsubmit = function (e) {
-          e.preventDefault()
-          const input = document.querySelector('.input')
-          const text = input.value
-          ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
-          input.value = ''
-          input.focus()
-        }
-
-        ws.onerror = function (error) {
-          console.error('WebSocket Error: ', error)
+        //入室したら(カワグチ)
+        if (msg.type === 'join') {
+          // 入室したユーザーをセットに追加
+          players.add(msg.id)
+          //入室人数の更新
+          updatePlayerCountDisplay()
+          const messageList = document.querySelector('.messages');
+          const li = document.createElement('li');
+          li.textContent = msg.id + 'が入室しました '
+          messageList.appendChild(li);
         }
       }
 
-      main()
-    </script>
-  </body>
+      const form = document.querySelector('.form')
+
+      form.onsubmit = function (e) {
+        e.preventDefault()
+        const input = document.querySelector('.input')
+        const text = input.value
+        ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
+        input.value = ''
+        input.focus()
+      }
+
+      ws.onerror = function (error) {
+        console.error('WebSocket Error: ', error)
+      }
+    }
+
+    main()
+  </script>
+</body>
+
 </html>
