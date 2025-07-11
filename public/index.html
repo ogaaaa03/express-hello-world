@@ -101,10 +101,38 @@
       /* ツールを中央寄せ */
     }
 
-    /* sendPictureButton のスタイル */
+    /* sendPictureButton のスタイル(オガワ) */
     #sendPictureButton {
       display: none;
       /* 初期は非表示 */
+    }
+
+    /* 2つのキャンバスを横並びにするコンテナ(オガワ) */
+    .canvases-container {
+      display: flex;
+      gap: 20px;
+      /* キャンバス間のスペース */
+      margin: 20px auto;
+      /* 上下の余白と左右中央寄せ */
+      justify-content: center;
+      /* キャンバスを中央寄せ */
+      align-items: flex-start;
+      /* 上端を揃える */
+    }
+
+    .canvases-container canvas {
+      display: block;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #receivedCanvas {
+      border: solid 1px red;
+      /* 受信用キャンバスの枠線 */
+    }
+
+    #canvas {
+      border: solid 1px black;
+      /* 描画用キャンバスの枠線 */
     }
   </style>
 </head>
@@ -143,8 +171,10 @@
     <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
 
   </div>
-  <canvas id="canvas" width="600" height="600" style="border: solid 1px red"></canvas>
-  <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
+  <div class="canvases-container">
+    <canvas id="receivedCanvas" width="600" height="600"></canvas>
+    <canvas id="canvas" width="600" height="600"></canvas>
+  </div>
 
   <div class="drawing-tools">
     <!-- 線の太さ(オタニ追加) -->
@@ -226,6 +256,9 @@
         }
       }
 
+      //2つのキャンバスとコンテキストを取得(オガワ)
+      const receivedCanvas = document.getElementById('receivedCanvas');
+      const receivedCtx = receivedCanvas.getContext('2d');
       const canvas = document.getElementById('canvas')
       const ctx = canvas.getContext('2d')
 
@@ -308,13 +341,17 @@
         canvas.style.pointerEvents = 'auto'; // 描画可能に
         colorPicker.disabled = false;
         lineWidthSlider.disabled = false;
+        eraserToggle.disabled = false; // 消しゴムも有効に
+        drawingToolsContainer.style.display = 'flex'; // 描画ツール全体を表示
       }
 
       function disableDrawingTools() {
         canvas.style.pointerEvents = 'none'; // 描画できないように
         colorPicker.disabled = true;
         lineWidthSlider.disabled = true;
+        eraserToggle.disabled = true; // 消しゴムも無効に
         drawing = false; // 描画中フラグをオフにする
+        drawingToolsContainer.style.display = 'none'; // 描画ツール全体を非表示
       }
 
       //送信するメッセージに color, width, eraser を追加(オタニ追加)
@@ -364,6 +401,10 @@
         chatInput.placeholder = "チャットメッセージを入力";
         chatInput.value = '';
         chatInput.focus();
+
+        // 初期化時にキャンバスをクリア
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
       }
 
       // 接続時に参加したことえお知らせる(カワグチ)
@@ -395,8 +436,8 @@
         if (msg.type === 'image_sended') {
           const img = new Image();
           img.onload = function () {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
+            receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
+            receivedCtx.drawImage(img, 0, 0);
           };
           img.src = msg.imageData;
         }
