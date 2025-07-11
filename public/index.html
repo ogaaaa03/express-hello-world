@@ -235,6 +235,20 @@
         drawing = false
       }
 
+      // 描画ツール（Canvas, ColorPicker, LineWidthSlider）の有効/無効を切り替える
+      function enableDrawingTools() {
+        canvas.style.pointerEvents = 'auto'; // 描画可能に
+        colorPicker.disabled = false;
+        lineWidthSlider.disabled = false;
+      }
+
+      function disableDrawingTools() {
+        canvas.style.pointerEvents = 'none'; // 描画できないように
+        colorPicker.disabled = true;
+        lineWidthSlider.disabled = true;
+        drawing = false; // 描画中フラグをオフにする
+      }
+
       function draw(x, y, dragging) {
         if (dragging) {
           ctx.lineTo(x, y)
@@ -252,6 +266,7 @@
       function setDrawingTurnUI() {
         isDrawingTurn = true;
         isAnsweringTurn = false;
+        enableDrawingTools(); // 描画ツールを有効化
 
         chatForm.style.display = 'none';
         sendPictureButton.style.display = 'block'
@@ -262,6 +277,8 @@
       function setAnsweringTurnUI() {
         isDrawingTurn = false;
         isAnsweringTurn = true;
+        disableDrawingTools(); // 描画ツールを無効化
+
         chatForm.style.display = 'flex';
         sendPictureButton.style.display = 'none';
         chatInput.placeholder = "何を描いたか”ひらがなで”入力してください";
@@ -414,11 +431,12 @@
         }
       }
 
-      sendPictureButton.onclick = () =>{
-        if(gameStarted && isDrawingTurn){
+      sendPictureButton.onclick = () => {
+        if (gameStarted && isDrawingTurn) {
           currentDrawingData = canvas.toDataURL('image/png');
           drawnImages.push(currentDrawingData);
           console.log("保存された画像:" + drawnImages)
+          setAnsweringTurnUI();
         }
       }
 
