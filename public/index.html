@@ -341,7 +341,7 @@
           console.log("保存された画像:", drawnImages); // デバッグ用にコンソールに出力
 
           // 描かれた画像をサーバーに送信
-          ws.send(JSON.stringify({ imageData: imageData }));
+          ws.send(JSON.stringify(imageData));
 
           // Canvasをクリアして次の描画に備える
           ctx.clearRect(0, 0, canvas.width, canvas.height);
