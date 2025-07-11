@@ -1,3 +1,5 @@
+<!-- RenderのURLです -->
+<!-- https://eshiritori.onrender.com/ -->
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -58,7 +60,7 @@
       margin-top: 20px;
     }
 
-    /* [type="color"] ピッカーの見た目を変更(オタニ追加) */
+    /* ピッカーの見た目を変更(オタニ追加) */
     input[type="color"] {
       width: 32px;
       height: 32px;
@@ -80,6 +82,10 @@
     input[type="text"] {
       border: 1px solid rgb(0, 0, 0);
       padding: 5px;
+    }
+
+    #eraserToggle {
+      margin-left: 10px;
     }
   </style>
 </head>
@@ -119,12 +125,17 @@
 
   </div>
   <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
+  <!-- 線の太さ(オタニ追加) -->
   <label>
     線の太さ:
     <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
   </label>
-  <input type="color" value="#000000">
+  <!-- カラーピッカー(オタニ追加) -->
+  <input type="color" id="colorPicker" value="#000000">
+  <!-- 消しゴム(オタニ追加) -->
+  <button id="eraserToggle">消しゴム OFF</button>
 
+  <!-- sendPictureボタン追加(オガワ) -->
   <button id="sendPictureButton">Send Picture</button>
 
   <script>
@@ -136,19 +147,21 @@
 
       //入室しているユーザー管理(重複を許さない)(カワグチ)
       let players = new Set()
+
       //ゲーム開始状態を管理(オガワ)
       let gameStarted = false;
       //回答を保存する配列(オガワ)
       let answers = [];
-      //描かれた画像を保存する配列
+      //描かれた画像を保存する配列(オガワ)
       let drawnImages = [];
-      //一時的に描かれた画像を保持する
+      //一時的に描かれた画像を保持する(オガワ)
       let currentDrawingData = null;
 
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
       const chatArea = document.querySelector('.chat')
-      //チャット入力欄と、sendボタン、画像sendボタン
+
+      //チャット入力欄と、sendボタン、画像sendボタン(オガワ)
       const chatInput = document.getElementById('chatInput'); // chatInputのIDを追加
       const chatSubmitButton = document.getElementById('chatSubmitButton'); // chatSubmitButtonのIDを追加
       const sendPictureButton = document.getElementById('sendPictureButton'); // 新しいボタンを取得
@@ -182,9 +195,9 @@
 
         if (confirmed) {
           ws.send(JSON.stringify({ type: 'start' }))
-          //入力欄のプレースホルダーを変更(オガワ)
+
           gameStarted = true; //ゲーム開始状態にする(オガワ)
-          //ゲーム開始時は描画ターン
+          //ゲーム開始時は描画ターン(オガワ)
           setDrawingTurnUI();
         }
       }
@@ -192,21 +205,43 @@
       const canvas = document.getElementById('canvas')
       const ctx = canvas.getContext('2d')
 
-      //ColorPickerをcanvasに反映させる(オタニ追加)
-      const colorPicker = document.querySelector('input[type="color"]');
-      ctx.strokeStyle = colorPicker.value; // 初期色の設定
+      //ColorPickerの色、線の太さ、消しゴムをcanvasに反映させる(オタニ追加)
+      const colorPicker = document.getElementById('colorPicker');
+      const lineWidthSlider = document.getElementById('lineWidthSlider');
+      const eraserToggle = document.getElementById('eraserToggle');
+
+      ctx.strokeStyle = colorPicker.value;
+      ctx.lineWidth = lineWidthSlider.value;
+
       colorPicker.addEventListener('input', () => {
-        ctx.strokeStyle = colorPicker.value;
+        if (!eraserMode) {
+          ctx.strokeStyle = colorPicker.value;
+        }
+      });
+      lineWidthSlider.addEventListener('input', () => {
+        ctx.lineWidth = lineWidthSlider.value;
       });
 
-      let drawing = false
+      let drawing = false;
+      let eraserMode = false;
+
+      //トグル(オタニ追加)
+      eraserToggle.addEventListener('click', () => {
+        eraserMode = !eraserMode;
+        eraserToggle.textContent = eraserMode ? "消しゴム ON" : "消しゴム OFF";
+        if (eraserMode) {
+          ctx.strokeStyle = "#ffffff";//←実際に消していない白で上塗りしている
+        } else {
+          ctx.strokeStyle = colorPicker.value;
+        }
+      });
 
       canvas.addEventListener('mousedown', (e) => {
-        sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown')
-      })
+        sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown');
+      });
       function mousedown() {
-        drawing = true
-        ctx.beginPath()
+        drawing = true;
+        ctx.beginPath();
       }
 
       canvas.addEventListener('mousemove', (e) => {
@@ -235,7 +270,16 @@
         drawing = false
       }
 
-      // 描画ツール（Canvas, ColorPicker, LineWidthSlider）の有効/無効を切り替える
+      function draw(x, y, dragging) {
+        if (dragging) {
+          ctx.lineTo(x, y)
+          ctx.stroke()
+        } else {
+          ctx.moveTo(x, y)
+        }
+      }
+
+      // 描画ツール（Canvas, ColorPicker, LineWidthSlider）の有効/無効を切り替える(オガワ)
       function enableDrawingTools() {
         canvas.style.pointerEvents = 'auto'; // 描画可能に
         colorPicker.disabled = false;
@@ -249,20 +293,21 @@
         drawing = false; // 描画中フラグをオフにする
       }
 
-      function draw(x, y, dragging) {
-        if (dragging) {
-          ctx.lineTo(x, y)
-          ctx.stroke()
-        } else {
-          ctx.moveTo(x, y)
-        }
-      }
-
+      //送信するメッセージに color, width, eraser を追加(オタニ追加)
       function sendDrawingEvent(x, y, control) {
-        const message = JSON.stringify({ x, y, control, type: 'paint' })
-        ws.send(message)
+        const message = JSON.stringify({
+          x,
+          y,
+          control,
+          color: eraserMode ? "#ffffff" : colorPicker.value,
+          width: lineWidthSlider.value,
+          eraser: eraserMode,
+          type: 'paint'
+        });
+        ws.send(message);
       }
 
+      //描画ターン、回答入力ターン、チャットモードそれぞれの処理(オガワ)
       function setDrawingTurnUI() {
         isDrawingTurn = true;
         isAnsweringTurn = false;
@@ -295,7 +340,6 @@
         chatInput.placeholder = "チャットメッセージを入力";
         chatInput.value = '';
         chatInput.focus();
-
       }
 
       // 接続時に参加したことえお知らせる(カワグチ)
@@ -303,23 +347,27 @@
         ws.send(JSON.stringify({ type: 'join', id: myId }))
       };
 
+      //受信側に color, width, eraser　を追加(オタニ追加)
       ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data)
+        const msg = JSON.parse(event.data);
         if (msg.type === 'paint') {
-          const { x, y, control } = msg
-          console.log({ control })
+          const { x, y, control, color, width } = msg;
+
+          if (color) ctx.strokeStyle = color;
+          if (width) ctx.lineWidth = parseFloat(width);
+
           if (control === 'mousedown') {
-            mousedown()
+            mousedown();
           } else if (control === 'mouseup') {
-            mouseup()
+            mouseup();
           } else if (control === 'mousemove') {
-            mousemove(x, y)
+            mousemove(x, y);
           } else if (control === 'mouseout') {
-            mouseout()
+            mouseout();
           }
         }
 
-        //画像データを受信したらcanvasに表示
+        //画像データを受信したらcanvasに表示(オガワ)
         if (msg.type === 'image_sended') {
           const img = new Image();
           img.onload = function () {
@@ -328,6 +376,7 @@
           };
           img.src = msg.imageData;
         }
+
 
         //プレイヤー情報が送られてきたら(カワグチ)
         if (msg.type === 'players') {
@@ -339,9 +388,9 @@
 
         //スタートボタンが押されたら(カワグチ)
         if (msg.type === 'start') {
-          //画面切り替え(ターン・ラウンド選択ボタンを消す)
-          canvas.style.display = 'block'
+          //画面切り替え(チャット画面、ターン・ラウンド選択ボタンを消す)(カワグチ)
           chatArea.style.display = 'block'
+          canvas.style.display = 'block'
           chatInput.style.display = 'block'
 
           document.getElementById('roundSelect').parentElement.style.display = 'none'
@@ -375,14 +424,14 @@
         if (msg.type === 'answer') {
           const { id, text } = msg;
           answers.push({ id, text });
-          console.log("保存された回答:", answers); // デバッグ用
+          console.log("保存された回答:", submittedAnswers); // デバッグ用
         }
 
         //入室したら(カワグチ)
         if (msg.type === 'join') {
-          // 入室したユーザーをセットに追加
+          // 入室したユーザーをセットに追加(カワグチ)
           players.add(msg.id)
-          //入室人数の更新
+          //入室人数の更新(カワグチ)
           updatePlayerCountDisplay()
           const messageList = document.querySelector('.messages');
           const li = document.createElement('li');
@@ -392,16 +441,6 @@
       }
 
       const chatForm = document.querySelector('.form')
-
-      // form.onsubmit = function (e) {
-      //   e.preventDefault()
-      //   const input = document.querySelector('.input')
-      //   const text = input.value
-      //   ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
-      //   input.value = ''
-      //   input.focus()
-      // }
-
 
       //ゲーム開始前の処理(オガワ)
       chatForm.onsubmit = function (e) {
