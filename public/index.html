@@ -118,18 +118,12 @@
     <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
 
   </div>
-  <!-- タイマー表示(オガワ) -->
-  <div id="timerDisplay" style="display: none;">00:00</div>
-
-  <!-- ふたつのキャンパス(オガワ) -->
-  <canvas id="receivedCanvas" width="600" height="600" style="border: solid 1px red;"></canvas>
-  <canvas id="canvas" width="600" height="600" style="border: solid 1px black; margin-top: 10px"></canvas>
-
-  <label id="lineWidthLabel">
+  <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
+  <label>
     線の太さ:
     <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
   </label>
-  <input type="color" value="#000000" id="colorPicker">
+  <input type="color" value="#000000">
 
   <script>
     function main() {
@@ -146,12 +140,6 @@
       let answers = [];
       //描かれた画像を保存する配列
       let drawnImages = [];
-
-
-      // タイマー関連の変数(オガワ)
-      let timerInterval = null;
-      let timeLeft = 0; // 残り時間（秒）
-      const timerDisplay = document.getElementById('timerDisplay');
 
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
@@ -187,8 +175,6 @@
         }
       }
 
-      const receivedCanvas = document.getElementById('receivedCanvas');
-      const receivedCtx = receivedCanvas.getContext('2d');
       const canvas = document.getElementById('canvas')
       const ctx = canvas.getContext('2d')
 
@@ -197,13 +183,6 @@
       ctx.strokeStyle = colorPicker.value; // 初期色の設定
       colorPicker.addEventListener('input', () => {
         ctx.strokeStyle = colorPicker.value;
-      });
-
-      // 線の太さスライダーをdrawingCanvasに反映させる
-      const lineWidthSlider = document.getElementById('lineWidthSlider');
-      drawingCtx.lineWidth = lineWidthSlider.value; // 初期値の設定
-      lineWidthSlider.addEventListener('input', () => {
-        drawingCtx.lineWidth = lineWidthSlider.value;
       });
 
       let drawing = false
@@ -256,48 +235,6 @@
         ws.send(message)
       }
 
-      // タイマーを開始する関数
-      function startTimer(duration) {
-        timeLeft = duration;
-        timerDisplay.style.display = 'block'; // タイマーを表示
-        updateTimerDisplay(); // 初回表示を更新
-
-        if (timerInterval) {
-          clearInterval(timerInterval);
-        }
-
-        timerInterval = setInterval(() => {
-          timeLeft--;
-          updateTimerDisplay();
-
-          if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            console.log("時間切れです！ターンを終了します。");
-            // 時間切れの場合、自動的にターン終了メッセージを送信
-            // 回答は空になる
-            if (gameStarted && drawingCanvas.style.pointerEvents === 'auto') { // 自分のターン中に時間切れになった場合のみ
-              sendTurnEndMessage(''); // 回答なしでターン終了
-            }
-          }
-        }, 1000);
-      }
-
-      // タイマーを停止する関数
-      function stopTimer() {
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          timerInterval = null;
-        }
-        timerDisplay.style.display = 'none'; // タイマーを非表示
-      }
-
-      // タイマー表示を更新する関数
-      function updateTimerDisplay() {
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
-        timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      }
-
       // 接続時に参加したことえお知らせる(カワグチ)
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'join', id: myId }))
@@ -330,7 +267,6 @@
         //スタートボタンが押されたら(カワグチ)
         if (msg.type === 'start') {
           //画面切り替え(ターン・ラウンド選択ボタンを消す)
-          receivedCanvas.style.display = 'block';
           canvas.style.display = 'block'
           chatArea.style.display = 'block'
 
@@ -367,44 +303,6 @@
           console.log("保存された回答:", answers); // デバッグ用
         }
 
-        // 前のプレイヤーの絵を受信して receivedCanvas に表示
-        if (msg.type === 'image_to_draw') {
-          const { imageData } = msg;
-          const img = new Image();
-          img.onload = () => {
-            receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height); // receivedCanvasをクリア
-            receivedCtx.drawImage(img, 0, 0); // 前のプレイヤーの絵を描画
-            console.log("前のプレイヤーの絵を受信して receivedCanvas に表示しました。");
-          };
-          img.src = imageData;
-        }
-
-        // 描画用Canvasをクリアする指示
-        if (msg.type === 'clear_canvas') {
-          console.log("描画用Canvasをクリアします。");
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          canvas.style.pointerEvents = 'none'; // 描画できないようにする
-          stopTimer(); // タイマーも停止
-        }
-
-        // 自分のターンになった時の指示
-        if (msg.type === 'your_turn') {
-          const { duration } = msg; // サーバーから制限時間を受け取る
-          console.log(`あなたの番です！canvas に絵を描いてください。制限時間: ${duration}秒`);
-          canvas.style.pointerEvents = 'auto'; // 描画可能にする
-          chatInput.placeholder = "何を描いたか入力してください..."; // プレースホルダーを変更
-          startTimer(duration); // タイマーを開始
-        }
-
-        ゲーム終了の指示
-        if (msg.type === 'game_end') {
-          console.log("ゲームが終了しました！最終的な絵:", msg.finalImage);
-          // ゲーム終了時のUI表示など
-          canvas.style.pointerEvents = 'none'; // 描画できないようにする
-          stopTimer(); // タイマーを停止
-          chatInput.placeholder = "チャットメッセージを入力..."; // プレースホルダーを戻す
-        }
-
         //入室したら(カワグチ)
         if (msg.type === 'join') {
           // 入室したユーザーをセットに追加
@@ -436,18 +334,25 @@
         const input = document.querySelector('.input')
         const text = input.value
 
-        if (gameStarted && drawingCanvas.style.pointerEvents === 'auto') {
+        if (gameStarted) {
           //ゲーム中ならCanvasの画像を保存し、回答も保存する
           const imageData = canvas.toDataURL('image/png'); // Canvasの内容を画像データとして取得
           drawnImages.push(imageData); // 描かれた画像を保存
           console.log("保存された画像:", drawnImages); // デバッグ用にコンソールに出力
 
-          if (text === '') {
-            alert("何を描いたか入力してください！");
-            return; // 回答が空の場合は送信しない
-          } sendTurnEndMessage(text); // 回答付きでターン終了
+          // 描かれた画像をサーバーに送信
+          ws.send(JSON.stringify(imageData));
+
+          // Canvasをクリアして次の描画に備える
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // ゲーム中なら回答として送信
+          // 回答が入力されていれば、回答も送信・保存
+          if (text !== '') {
+            ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
+          }
         } else {
-          // ゲーム開始前、または自分の描画ターンでなければチャットとして送信
+          // ゲーム開始前ならチャットとして送信
           if (text !== '') { // 空のメッセージは送信しない
             ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
           }
