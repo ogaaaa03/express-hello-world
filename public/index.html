@@ -317,19 +317,19 @@
         }
       }
 
-      const form = document.querySelector('.form')
+      // const form = document.querySelector('.form')
 
-      form.onsubmit = function (e) {
-        e.preventDefault()
-        const input = document.querySelector('.input')
-        const text = input.value
-        ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
-        input.value = ''
-        input.focus()
-      }
+      // form.onsubmit = function (e) {
+      //   e.preventDefault()
+      //   const input = document.querySelector('.input')
+      //   const text = input.value
+      //   ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
+      //   input.value = ''
+      //   input.focus()
+      // }
 
 
-      //チャットの判定(オガワ)
+      //↑の処理をチャットを区別したものに変更(オガワ)
       chatForm.onsubmit = function (e) {
         e.preventDefault()
         const text = chatInput.value.trim();
