@@ -163,8 +163,9 @@
     </label>
     <!-- ゲーム開始ボタン(カワグチ) -->
     <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
-
   </div>
+
+  <!-- ふたつのキャンバス -->
   <div class="canvases-container">
     <canvas id="receivedCanvas" width="600" height="600"></canvas>
     <canvas id="canvas" width="600" height="600"></canvas>
@@ -214,7 +215,6 @@
       const chatSubmitButton = document.getElementById('chatSubmitButton'); // chatSubmitButtonのIDを追加
       const sendPictureButton = document.getElementById('sendPictureButton'); // 新しいボタンを取得
       const drawingToolsContainer = document.querySelector('.drawing-tools');
-
 
       //描画モードか、回答入力モードか(オガワ)
       let isDrawingTurn = false; //絵を描くターンかどうか
