@@ -138,6 +138,8 @@
       let gameStarted = false;
       //回答を保存する配列(オガワ)
       let answers = [];
+      //描かれた画像を保存する配列
+      let drawnImages = [];
 
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
@@ -169,7 +171,6 @@
         if (confirmed) {
           ws.send(JSON.stringify({ type: 'start' }))
           //入力欄のプレースホルダーを変更(オガワ)
-          chatInput.placeholder = "何の絵を描いたのか ”ひらがな” で入力してください...";
           gameStarted = true; //ゲーム開始状態にする(オガワ)
         }
       }
@@ -273,8 +274,6 @@
           document.getElementById('turnSelect').parentElement.style.display = 'none'
           document.getElementById('startButton').style.display = 'none'
 
-          //入力欄のプレースホルダーを変更(オガワ)
-          chatInput.placeholder = "何の絵を描いたのか ”ひらがな” で入力してください...";
           gameStarted = true; //ゲーム開始状態にする(オガワ)
         }
 
@@ -302,6 +301,7 @@
           const { id, text } = msg;
           answers.push({ id, text });
           console.log("保存された回答:", submittedAnswers); // デバッグ用
+          appendMessage(msg.id, msg.text, myId)
         }
 
         //入室したら(カワグチ)
