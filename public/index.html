@@ -213,6 +213,8 @@
       const chatInput = document.getElementById('chatInput'); // chatInputのIDを追加
       const chatSubmitButton = document.getElementById('chatSubmitButton'); // chatSubmitButtonのIDを追加
       const sendPictureButton = document.getElementById('sendPictureButton'); // 新しいボタンを取得
+      const drawingToolsContainer = document.querySelector('.drawing-tools');
+
 
       //描画モードか、回答入力モードか(オガワ)
       let isDrawingTurn = false; //絵を描くターンかどうか
@@ -370,8 +372,10 @@
 
         chatForm.style.display = 'none';
         sendPictureButton.style.display = 'block'
-        chatInput.placaholder = "絵を描いて「Send Picture」を押してください"
+        chatInput.placeholder = "絵を描いて「Send Picture」を押してください"
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
+
       }
 
       function setAnsweringTurnUI() {
@@ -483,7 +487,7 @@
         if (msg.type === 'answer') {
           const { id, text } = msg;
           answers.push({ id, text });
-          console.log("保存された回答:", submittedAnswers); // デバッグ用
+          console.log("保存された回答:", answers); // デバッグ用
         }
 
         //入室したら(カワグチ)
