@@ -87,9 +87,9 @@
 <body>
   <div class="chat">
     <ul class="messages"></ul>
-    <form class="form">
-      <input class="input" autocomplete="off" />
-      <button class="submit">Send</button>
+    <form class="form" id="chatForm">
+      <input class="input" id="chatInput" autocomplete="off" />
+      <button class="submit" id="chatSubmitButton">Send</button>
     </form>
   </div>
 
@@ -125,6 +125,8 @@
   </label>
   <input type="color" value="#000000">
 
+  <button id="sendPictureButton">Send Picture</button>
+
   <script>
     function main() {
       // myIdを自分で入力するように変更(入力なしならランダム)(カワグチ)
@@ -140,11 +142,20 @@
       let answers = [];
       //描かれた画像を保存する配列
       let drawnImages = [];
+      //一時的に描かれた画像を保持する
+      let currentDrawingData = null;
 
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
       const chatArea = document.querySelector('.chat')
-      const chatInput = document.querySelector('.input');
+      //チャット入力欄と、sendボタン、画像sendボタン
+      const chatInput = document.getElementById('chatInput'); // chatInputのIDを追加
+      const chatSubmitButton = document.getElementById('chatSubmitButton'); // chatSubmitButtonのIDを追加
+      const sendPictureButton = document.getElementById('sendPictureButton'); // 新しいボタンを取得
+
+      //描画モードか、回答入力モードか(オガワ)
+      let isDrawingTurn = false; //絵を描くターンかどうか
+      let isAnsweringTurn = false; //回答入力ターンかどうか
 
       // 現在の入室人数を表示をする関数(カワグチ)
       function updatePlayerCountDisplay() {
@@ -173,6 +184,8 @@
           ws.send(JSON.stringify({ type: 'start' }))
           //入力欄のプレースホルダーを変更(オガワ)
           gameStarted = true; //ゲーム開始状態にする(オガワ)
+          //ゲーム開始時は描画ターン
+          setDrawingTurnUI();
         }
       }
 
@@ -236,6 +249,38 @@
         ws.send(message)
       }
 
+      function setDrawingTurnUI() {
+        isDrawingTurn = true;
+        isAnsweringTurn = false;
+
+        chatForm.style.display = 'none';
+        sendPictureButton.style.display = 'block'
+        chatInput.placaholder = "絵を描いて「Send Picture」を押してください"
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function setAnsweringTurnUI() {
+        isDrawingTurn = false;
+        isAnsweringTurn = true;
+        chatForm.style.display = 'flex';
+        sendPictureButton.style.display = 'none';
+        chatInput.placeholder = "何を描いたか”ひらがなで”入力してください";
+        chatInput.value = '';
+        chatInput.focus();
+      }
+
+      function setChatModeUI() {
+        isDrawingTurn = false;
+        isAnsweringTurn = false;
+
+        chatForm.style.display = 'flex';
+        sendPictureButton.style.display = 'none';
+        chatInput.placeholder = "チャットメッセージを入力";
+        chatInput.value = '';
+        chatInput.focus();
+
+      }
+
       // 接続時に参加したことえお知らせる(カワグチ)
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'join', id: myId }))
@@ -257,6 +302,16 @@
           }
         }
 
+        //画像データを受信したらcanvasに表示
+        if (msg.type === 'image_sended') {
+          const img = new Image();
+          img.onload = function () {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+          };
+          img.src = msg.imageData;
+        }
+
         //プレイヤー情報が送られてきたら(カワグチ)
         if (msg.type === 'players') {
           players = new Set(msg.players)
@@ -276,8 +331,8 @@
           document.getElementById('turnSelect').parentElement.style.display = 'none'
           document.getElementById('startButton').style.display = 'none'
 
-          chatInput.placeholder = "絵を描いてから「Send」ボタンを押してください";
           gameStarted = true; //ゲーム開始状態にする(オガワ)
+          setDrawingTurnUI();
         }
 
         //メッセージ送ったときの挙動の関数(カワグチ)
@@ -331,37 +386,40 @@
       // }
 
 
-      //↑の処理をチャットを区別したものに変更(オガワ)
+      //ゲーム開始前の処理(オガワ)
       chatForm.onsubmit = function (e) {
         e.preventDefault()
         const input = document.querySelector('.input')
         const text = input.value
 
-        if (gameStarted) {
-          //ゲーム中ならCanvasの画像を保存し、回答も保存する
-          const imageData = canvas.toDataURL('image/png'); // Canvasの内容を画像データとして取得
-          drawnImages.push(imageData); // 描かれた画像を保存
-          console.log("保存された画像:", drawnImages); // デバッグ用にコンソールに出力
-
-          // 描かれた画像をサーバーに送信
-          ws.send(JSON.stringify({ imageData: imageData, type: 'image_sended' }));
-
-          // Canvasをクリアして次の描画に備える
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          // ゲーム中なら回答として送信
-          // 回答が入力されていれば、回答も送信・保存
-          if (text !== '') {
-            ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
-          }
-        } else {
-          // ゲーム開始前ならチャットとして送信
+        if (!gameStarted) {
           if (text !== '') { // 空のメッセージは送信しない
             ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
           }
+          input.value = ''
+          input.focus()
+          return;
         }
-        input.value = ''
-        input.focus()
+
+        //ゲーム中の処理(オガワ)
+        if (isAnsweringTurn) {
+          if (text !== '') {
+            ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
+            answers.push({ id: myId, text: text });
+            input.value = ''
+            input.focus()
+          }
+          //回答送信後次の人の絵のターンへ
+          setDrawingTurnUI();
+        }
+      }
+
+      sendPictureButton.onclick = () =>{
+        if(gameStarted && isDrawingTurn){
+          currentDrawingData = canvas.toDataURL('image/png');
+          drawnImages.push(currentDrawingData);
+          console.log("保存された画像:" + drawnImages)
+        }
       }
 
       ws.onerror = function (error) {
