@@ -87,6 +87,19 @@
     #eraserToggle {
       margin-left: 10px;
     }
+
+    /* 線の太さやカラーピッカーの場所を一律管理(オガワ) */
+    .drawing-tools {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+      gap: 15px;
+      /* 要素間のスペース */
+      flex-wrap: wrap;
+      /* 要素が収まらない場合に折り返す */
+      justify-content: center;
+      /* ツールを中央寄せ */
+    }
   </style>
 </head>
 
@@ -125,16 +138,19 @@
 
   </div>
   <canvas id="canvas" width="600" height="600" style="border: solid 1px red"></canvas>
-  <canvas id="canvas" width="600" height="600" style="border: solid 1px black" x="width/2"></canvas>
-  <!-- 線の太さ(オタニ追加) -->
-  <label x="width/2">
-    線の太さ:
-    <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
-  </label>
-  <!-- カラーピッカー(オタニ追加) -->
-  <input type="color" id="colorPicker" value="#000000">
-  <!-- 消しゴム(オタニ追加) -->
-  <button id="eraserToggle">消しゴム OFF</button>
+  <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
+
+  <div class="drawing-tools">
+    <!-- 線の太さ(オタニ追加) -->
+    <label>
+      線の太さ:
+      <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
+    </label>
+    <!-- カラーピッカー(オタニ追加) -->
+    <input type="color" id="colorPicker" value="#000000">
+    <!-- 消しゴム(オタニ追加) -->
+    <button id="eraserToggle">消しゴム OFF</button>
+  </div>
 
   <!-- sendPictureボタン追加(オガワ) -->
   <button id="sendPictureButton">Send Picture</button>
