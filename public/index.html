@@ -51,6 +51,16 @@
       cursor: pointer;
     }
 
+    #timerDisplay {
+      font-size: 2em;
+      font-weight: bold;
+      color: blue;
+      margin-top: 10px;
+      text-align: center;
+      display: none;
+      /* 初期は非表示 */
+    }
+
     /* 横並び(オタニ追加) */
     .box {
       display: flex;
@@ -118,6 +128,9 @@
     <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
 
   </div>
+
+  <div id="timerDisplay">00:00</div>
+
   <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
   <label>
     線の太さ:
@@ -140,6 +153,12 @@
       let answers = [];
       //描かれた画像を保存する配列
       let drawnImages = [];
+
+      // タイマー関連の変数とDOM要素
+      let timerInterval = null;
+      let timeLeft = 0; // 残り時間（秒）
+      const timerDisplay = document.getElementById('timerDisplay');
+      const chatInput = document.querySelector('.input'); // チャット入力欄
 
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
@@ -235,6 +254,57 @@
         ws.send(message)
       }
 
+      // タイマーを開始する関数(オガワ)
+      function startTimer(duration) {
+        timeLeft = duration;
+        timerDisplay.style.display = 'block'; // タイマーを表示
+        updateTimerDisplay(); // 初回表示を更新
+
+        if (timerInterval) {
+          clearInterval(timerInterval);
+        }
+
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          updateTimerDisplay();
+
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            console.log("時間切れです！ターンを終了します。");
+            // 時間切れの場合、自動的にターン終了メッセージを送信
+            if (gameStarted && drawingCanvas.style.pointerEvents === 'auto') { // 自分のターン中に時間切れになった場合のみ
+              sendTurnEndMessage(''); // 回答なしでターン終了
+            }
+          }
+        }, 1000);
+      }
+
+      // タイマーを停止する関数
+      function stopTimer() {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        timerDisplay.style.display = 'none'; // タイマーを非表示
+      }
+
+      // タイマー表示を更新する関数
+      function updateTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+
+      // ターン終了メッセージを送信する共通関数
+      function sendTurnEndMessage(answerText) {
+        const imageData = canvas.toDataURL('image/png');
+        ws.send(JSON.stringify({ type: 'turn_end', imageData: imageData, answer: answerText, id: myId }));
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 描画後にクリア
+        canvas.style.pointerEvents = 'none'; // 描画できないようにする
+        stopTimer(); // タイマーを停止
+        chatInput.placeholder = "チャットメッセージを入力..."; // プレースホルダーを戻す
+      }
+
       // 接続時に参加したことえお知らせる(カワグチ)
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'join', id: myId }))
@@ -301,6 +371,23 @@
           const { id, text } = msg;
           answers.push({ id, text });
           console.log("保存された回答:", answers); // デバッグ用
+        }
+
+        // 自分のターンになった時の指示
+        if (msg.type === 'your_turn') {
+          const { duration } = msg; // サーバーから制限時間を受け取る (例: 60秒)
+          console.log(`あなたの番です！canvas に絵を描いてください。制限時間: ${duration}秒`);
+          canvas.style.pointerEvents = 'auto'; // 描画可能にする
+          chatInput.placeholder = "何を描いたか入力してください..."; // プレースホルダーを変更
+          startTimer(duration); // タイマーを開始
+        }
+
+        // ゲーム終了の指示
+        if (msg.type === 'game_end') {
+          console.log("ゲームが終了しました！");
+          canvas.style.pointerEvents = 'none'; // 描画できないようにする
+          stopTimer(); // タイマーを停止
+          chatInput.placeholder = "チャットメッセージを入力..."; // プレースホルダーを戻す
         }
 
         //入室したら(カワグチ)
