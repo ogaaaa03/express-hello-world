@@ -300,7 +300,7 @@
         if (msg.type === 'answer') {
           const { id, text } = msg;
           answers.push({ id, text });
-          console.log("保存された回答:", submittedAnswers); // デバッグ用
+          console.log("保存された回答:", answers); // デバッグ用
           appendMessage(msg.id, msg.text, myId)
         }
 
