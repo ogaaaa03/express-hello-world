@@ -335,14 +335,17 @@
         const input = document.querySelector('.input')
         const text = input.value
 
-        if (text === '') return; // 空のメッセージは送信しない
-
         if (gameStarted) {
           // ゲーム中なら回答として送信
-          ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
+          // 回答が入力されていれば、回答も送信・保存
+          if (text !== '') {
+            ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
+          }
         } else {
           // ゲーム開始前ならチャットとして送信
-          ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
+          if (text !== '') { // 空のメッセージは送信しない
+            ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
+          }
         }
         chatInput.value = ''
         chatInput.focus()
