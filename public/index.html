@@ -117,7 +117,6 @@
     <!-- ゲーム開始ボタン(カワグチ) -->
     <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
 
-
   </div>
   <canvas id="canvas" width="600" height="600" style="border: solid 1px black"></canvas>
   <label>
@@ -125,11 +124,6 @@
     <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
   </label>
   <input type="color" value="#000000">
-  <ul class="messages"></ul>
-  <form class="form">
-    <input class="input" autocomplete="off" />
-    <button class="submit">Send</button>
-  </form>
 
   <script>
     function main() {
@@ -140,6 +134,10 @@
 
       //入室しているユーザー管理(重複を許さない)(カワグチ)
       let players = new Set()
+      //ゲーム開始状態を管理(オガワ)
+      let gameStarted = false;
+      //回答を保存する配列(オガワ)
+      let answers = [];
 
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
@@ -170,6 +168,9 @@
 
         if (confirmed) {
           ws.send(JSON.stringify({ type: 'start' }))
+          //入力欄のプレースホルダーを変更(オガワ)
+          chatInput.placeholder = "何の絵を描いたのか ”ひらがな” で入力してください...";
+          gameStarted = true; //ゲーム開始状態にする(オガワ)
         }
       }
 
@@ -271,6 +272,10 @@
           document.getElementById('roundSelect').parentElement.style.display = 'none'
           document.getElementById('turnSelect').parentElement.style.display = 'none'
           document.getElementById('startButton').style.display = 'none'
+
+          //入力欄のプレースホルダーを変更(オガワ)
+          chatInput.placeholder = "何の絵を描いたのか ”ひらがな” で入力してください...";
+          gameStarted = true; //ゲーム開始状態にする(オガワ)
         }
 
         //メッセージ送ったときの挙動の関数(カワグチ)
@@ -290,6 +295,13 @@
           const { id, text } = msg
           //appendMessage関数でまとめた(カワグチ)
           appendMessage(msg.id, msg.text, myId)
+        }
+
+        //回答が送られたら、チャットには表示せず回答リストに保存(オガワ)
+        if (msg.type === 'answer') {
+          const { id, text } = msg;
+          answers.push({ id, text });
+          console.log("保存された回答:", submittedAnswers); // デバッグ用
         }
 
         //入室したら(カワグチ)
@@ -314,6 +326,25 @@
         ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
         input.value = ''
         input.focus()
+      }
+
+
+      //チャットの判定(オガワ)
+      chatForm.onsubmit = function (e) {
+        e.preventDefault()
+        const text = chatInput.value.trim();
+
+        if (text === '') return; // 空のメッセージは送信しない
+
+        if (gameStarted) {
+          // ゲーム中なら回答として送信
+          ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
+        } else {
+          // ゲーム開始前ならチャットとして送信
+          ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
+        }
+        chatInput.value = ''
+        chatInput.focus()
       }
 
       ws.onerror = function (error) {
