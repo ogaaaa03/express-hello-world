@@ -317,7 +317,7 @@
         }
       }
 
-      // const form = document.querySelector('.form')
+      const chatForm = document.querySelector('.form')
 
       // form.onsubmit = function (e) {
       //   e.preventDefault()
@@ -332,7 +332,8 @@
       //↑の処理をチャットを区別したものに変更(オガワ)
       chatForm.onsubmit = function (e) {
         e.preventDefault()
-        const text = chatInput.value.trim();
+        const input = document.querySelector('.input')
+        const text = input.value
 
         if (text === '') return; // 空のメッセージは送信しない
 
