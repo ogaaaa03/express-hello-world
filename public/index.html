@@ -401,7 +401,7 @@
         chatInput.focus();
 
         // 初期化時にキャンバスをクリア
-        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
       }
 
@@ -488,6 +488,7 @@
           const { id, text } = msg;
           answers.push({ id, text });
           console.log("保存された回答:", answers); // デバッグ用
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         //入室したら(カワグチ)
