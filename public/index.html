@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat App</title>
+  <title>つなげ！　絵しりとり</title>
   <style>
     .chat {
       display: flex;
@@ -34,6 +34,13 @@
       align-self: flex-start;
       margin-right: auto;
       text-align: left;
+    }
+
+    /* 選択ボタンのスタイル */
+    .number-input {
+      width: 80px;
+      padding: 5px;
+      font-size: 16px;
     }
 
     .form {
@@ -141,29 +148,28 @@
   </div>
 
   <div style="margin-top: 20px;">
-    <!-- ラウンド数選択(プルダウン方式)(カワグチ) -->
+    <!-- ラウンド数選択(スピンボタン方式)(カワグチ) -->
     <label>
       ラウンド数:
-      <select id="roundSelect">
-        <option value="1">1</option>
-        <option value="3">3</option>
-        <option value="5">5</option>
-        <option value="10">10</option>
-      </select>
+      <input type="number" id="roundSelect" class="number-input" min="1" max="10" step="1" value="3">
     </label>
-    <!-- ターン数選択(プルダウン方式)(カワグチ) -->
+    <!-- ターン数選択(スピンボタン方式)(カワグチ) -->
     <label style="margin-left: 20px;">
       ターン数:
-      <select id="turnSelect">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="5">5</option>
-      </select>
+      <input type="number" id="turnSelect" class="number-input" min="1" max="5" step="1" value="2">
     </label>
     <!-- ゲーム開始ボタン(カワグチ) -->
     <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
   </div>
+
+  <!-- ルームの状況(カワグチ) -->
+  <div id="gameStatus" style="font-size: 20px; font-weight: bold; margin: 10px 0;">
+    <span id="firstChar" style="display: none;">最初の文字は </span>
+    入室人数: <span id="playerCount">0</span>人
+  </div>
+
+  <!-- 誰のターンか(カワグチ) -->
+  <div id="turnDisplay" style="font-size: 18px; font-weight: bold; margin-bottom: 10px;"></div>
 
   <!-- ふたつのキャンバス -->
   <div class="canvases-container">
@@ -181,11 +187,27 @@
     <input type="color" id="colorPicker" value="#000000">
     <!-- 消しゴム(オタニ追加) -->
     <button id="eraserToggle">消しゴム OFF</button>
+    <!-- Undo/Redo(オタニ追加) -->
+    <button id="undoBtn">↩</button>
+    <button id="redoBtn">↪</button>
 
     <!-- sendPictureボタン追加(オガワ) -->
     <button id="sendPictureButton">Send Picture</button>
 
   </div>
+
+  <!-- 待機画面(仮)(カワグチ) -->
+  <!-- <div id="waitingScreen" style="display: none;
+        width: 600px;
+        height: 600px;
+        background-color: white;
+        border: 1px solid black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: bold;">待機中...
+    </div> -->
 
   <script>
     function main() {
@@ -206,6 +228,9 @@
       //一時的に描かれた画像を保持する(オガワ)
       let currentDrawingData = null;
 
+      //書いた情報を保管する(オタニ追加)
+      let currentRemoteStroke = [];
+
       //ボタンとチャットしている場所の管理(カワグチ)
       const startButton = document.getElementById('startButton')
       const chatArea = document.querySelector('.chat')
@@ -222,15 +247,10 @@
 
       // 現在の入室人数を表示をする関数(カワグチ)
       function updatePlayerCountDisplay() {
-        let countSpan = document.getElementById('playerCountSpan')
-
-        if (!countSpan) {
-          countSpan = document.createElement('span')
-          countSpan.id = 'playerCountSpan'
-          countSpan.style.marginLeft = '10px'
-          startButton.parentNode.insertBefore(countSpan, startButton.nextSibling)
+        const playerCountElement = document.getElementById('playerCount');
+        if (playerCountElement) {
+          playerCountElement.textContent = players.size;
         }
-        countSpan.textContent = `入室人数: ${players.size} 人`
       }
 
       // ゲーム開始ボタンが押されたら(カワグチ)
@@ -251,6 +271,10 @@
           setDrawingTurnUI();
         }
       }
+
+      //過去に書いたものを入れる配列(オタニ追加)
+      let drawingHistory = [];
+      let undoneHistory = [];
 
       //2つのキャンバスとコンテキストを取得(オガワ)
       const receivedCanvas = document.getElementById('receivedCanvas');
@@ -289,6 +313,23 @@
         }
       });
 
+      //redo/undoボタン追加(オタニ追加)
+      const undoBtn = document.getElementById('undoBtn');
+      const redoBtn = document.getElementById('redoBtn');
+
+      //undoボタンクリックでWebSocketに送信(オタニ追加)
+      undoBtn.addEventListener('click', () => {
+        ws.send(JSON.stringify({ type: 'undo' }));
+      });
+
+      //redoボタンクリックでWebSocketに送信(オタニ追加)
+      redoBtn.addEventListener('click', () => {
+        ws.send(JSON.stringify({ type: 'redo' }));
+      });
+
+      //現在描画している線の座標を一時的に保存するための配列(オタニ追加)
+      let currentStroke = [];
+
       canvas.addEventListener('mousedown', (e) => {
         sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown');
       });
@@ -311,9 +352,20 @@
       canvas.addEventListener('mouseup', (e) => {
         sendDrawingEvent(e.offsetX, e.offsetY, 'mouseup')
       })
+      //mouseup時にcurrentStrokeを初期化(オタニ追加)
       function mouseup() {
         drawing = false
         ctx.beginPath()
+        if (currentStroke.length > 0) {
+          // 現在のストロークを保存
+          drawingHistory.push({
+            stroke: currentStroke,
+            color: ctx.strokeStyle,
+            width: ctx.lineWidth
+          });
+          currentStroke = []; // 次のストロークに備えてリセット
+          undoneHistory = []; // 新しい描画があったのでredo履歴をクリア
+        }
       }
 
       canvas.addEventListener('mouseout', (e) => {
@@ -323,12 +375,35 @@
         drawing = false
       }
 
+      //draw関数をundo/redoのために変更(オタニ追加)
       function draw(x, y, dragging) {
         if (dragging) {
-          ctx.lineTo(x, y)
-          ctx.stroke()
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          currentStroke.push({ x, y });
         } else {
-          ctx.moveTo(x, y)
+          ctx.moveTo(x, y);
+          currentStroke.push({ x, y });
+        }
+      }
+
+      //canvasを再描画する際に必要(オタニ追加)
+      function redraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let item of drawingHistory) {
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = item.width;
+          ctx.beginPath();
+          const points = item.stroke;
+          for (let i = 0; i < points.length; i++) {
+            const p = points[i];
+            if (i === 0) {
+              ctx.moveTo(p.x, p.y);
+            } else {
+              ctx.lineTo(p.x, p.y);
+            }
+          }
+          ctx.stroke();
         }
       }
 
@@ -338,6 +413,8 @@
         colorPicker.disabled = false;
         lineWidthSlider.disabled = false;
         eraserToggle.disabled = false; // 消しゴムも有効に
+        undoBtn.disabled = false; //undoも有効に(オタニ追加)
+        redoBtn.disabled = false; //redoも有効に(オタニ追加)
         drawingToolsContainer.style.display = 'flex'; // 描画ツール全体を表示
       }
 
@@ -346,6 +423,8 @@
         colorPicker.disabled = true;
         lineWidthSlider.disabled = true;
         eraserToggle.disabled = true; // 消しゴムも無効に
+        undoBtn.disabled = true; //undoも無効に(オタニ追加)
+        redoBtn.disabled = true; //redoも無効に(オタニ追加)
         drawing = false; // 描画中フラグをオフにする
         drawingToolsContainer.style.display = 'none'; // 描画ツール全体を非表示
       }
@@ -416,18 +495,47 @@
         if (msg.type === 'paint') {
           const { x, y, control, color, width } = msg;
 
-          if (color) ctx.strokeStyle = color;
-          if (width) ctx.lineWidth = parseFloat(width);
+          ctx.strokeStyle = color || "#000000";
+          ctx.lineWidth = parseFloat(width) || 1;
 
           if (control === 'mousedown') {
             mousedown();
-          } else if (control === 'mouseup') {
-            mouseup();
+            currentRemoteStroke = [{ x, y }];
           } else if (control === 'mousemove') {
             mousemove(x, y);
+            currentRemoteStroke.push({ x, y });
+          } else if (control === 'mouseup') {
+            mouseup();
+            drawingHistory.push({
+              stroke: [...currentRemoteStroke],
+              color: ctx.strokeStyle,
+              width: ctx.lineWidth
+            });
+            undoneHistory = [];
+            currentRemoteStroke = [];
           } else if (control === 'mouseout') {
             mouseout();
           }
+        }
+
+        //undo処理(オタニ追加)
+        if (msg.type === 'undo') {
+          if (drawingHistory.length > 0) {
+            const lastStroke = drawingHistory.pop();
+            undoneHistory.push(lastStroke);
+            redraw();
+          }
+          return;
+        }
+
+        // Redo処理(オタニ追加)
+        if (msg.type === 'redo') {
+          if (undoneHistory.length > 0) {
+            const restored = undoneHistory.pop();
+            drawingHistory.push(restored);
+            redraw();
+          }
+          return;
         }
 
         //画像データを受信したらcanvasに表示(オガワ)
@@ -460,11 +568,36 @@
           document.getElementById('turnSelect').parentElement.style.display = 'none'
           document.getElementById('startButton').style.display = 'none'
 
+          const firstCharEl = document.getElementById('firstChar');
+          firstCharEl.textContent = '最初の文字: ' + msg.firstChar;
+          firstCharEl.style.display = 'inline';
+
+
+          // 最初の文字をここで更新
+          if (msg.firstChar) {
+            console.log("最初の文字:", msg.firstChar);
+            const firstCharEl = document.getElementById('firstChar');
+            firstCharEl.textContent = '最初の文字: ' + msg.firstChar;
+            firstCharEl.style.display = 'inline';
+            console.log("最初の文字:", msg.firstChar);
+          }
+
+          // ターン順を表示または保持
+          if (msg.turnOrder) {
+            console.log("ターン順:", msg.turnOrder);
+            const turnOrderDisplay = document.getElementById('turnOrderDisplay');
+            alert(`最初の文字: ${msg.firstChar}\nターン順: ${msg.turnOrder.join(" → ")}`);
+            if (turnOrderDisplay) {
+              turnOrderDisplay.textContent = 'ターン順: ' + msg.turnOrder.join(' → ');
+              turnOrderDisplay.style.display = 'inline';
+            }
+          }
+
           gameStarted = true; //ゲーム開始状態にする(オガワ)
           setDrawingTurnUI();
         }
 
-        //メッセージ送ったときの挙動の関数(カワグチ)
+        //メッセージ送ったときのテンプレート関数(カワグチ)
         function appendMessage(id, text, myId) {
           const messageList = document.querySelector('.messages')
           const li = document.createElement('li')
