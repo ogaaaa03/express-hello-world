@@ -171,6 +171,9 @@
   <!-- 誰のターンか(カワグチ) -->
   <div id="turnDisplay" style="font-size: 18px; font-weight: bold; margin-bottom: 10px;"></div>
 
+  <!-- 時間制限の表示 -->
+  <div id="timerDisplay" style="font-size: 24px; font-weight: bold; margin-bottom: 10px;"></div>
+
   <!-- ふたつのキャンバス -->
   <div class="canvases-container">
     <canvas id="receivedCanvas" width="600" height="600"></canvas>
@@ -443,6 +446,24 @@
         ws.send(message);
       }
 
+      //制限時間を設けるための処理(オガワ)
+      let countdownInterval; //タイマーIDを保持する関数
+
+      function startTimer(duration, onTimeout) {
+        let timer = duration;
+        const timerDisplay = document.getElementById('timerDisplay');
+        clearInterval(countdownInterval);
+
+        countdownInterval = setInterval(() => {
+          timerDisplay.textContent = `残り時間: ${timer}秒`;
+          if (timer <= 0) {
+            clearInterval(countdownInterval);
+            onTimeout(); //時間切れの処理
+          }
+          timer--;
+        }, 1000);
+      }
+
       //描画ターン、回答入力ターン、チャットモードそれぞれの処理(オガワ)
       function setDrawingTurnUI() {
         isDrawingTurn = true;
@@ -455,6 +476,14 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
 
+        //サーバーから描画ターンの制限時間を受け取る想定
+        startTimer(60, () => {//数字は制限時間
+          alert("描画ターン時間切れ！");
+          ws.send(JSON.stringfly({ type: 'drawing_time_up' }));
+          //描画ツールを無効化
+          disableDrawingTools();
+          //次の人にターンが移る処理
+        });
       }
 
       function setAnsweringTurnUI() {
@@ -467,17 +496,42 @@
         chatInput.placeholder = "何を描いたか”ひらがなで”入力してください";
         chatInput.value = '';
         chatInput.focus();
+
+        // サーバーから回答ターンの制限時間を受け取る想定
+        startTimer(30, () => { // 例: 回答ターンは30秒
+          alert("回答ターン時間切れ！");
+          ws.send(JSON.stringify({ type: 'answering_time_up' })); // サーバーに時間切れを通知
+          // チャット入力を無効化し、次のターンへのUIを準備（サーバーからの指示で最終的に切り替わる）
+          disableChatInput(); // 新しい関数を作成
+          //次の人にターンに移る処理
+        });
+      }
+
+      // チャット入力の有効/無効を切り替える関数(オガワ)
+      function disableChatInput() {
+        chatInput.disabled = true;
+        chatSubmitButton.disabled = true;
+      }
+
+      function enableChatInput() {
+        chatInput.disabled = false;
+        chatSubmitButton.disabled = false;
       }
 
       function setChatModeUI() {
         isDrawingTurn = false;
         isAnsweringTurn = false;
 
+        clearInterval(countdownInterval); // タイマーを停止
+        document.getElementById('timerDisplay').textContent = ''; // タイマー表示をクリア
+
         chatForm.style.display = 'flex';
         sendPictureButton.style.display = 'none';
         chatInput.placeholder = "チャットメッセージを入力";
         chatInput.value = '';
         chatInput.focus();
+
+        enableChatInput(); // チャットモードではチャット入力を有効に
 
         // 初期化時にキャンバスをクリア
         ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
@@ -635,7 +689,6 @@
           li.textContent = msg.id + 'が入室しました '
           messageList.appendChild(li);
         }
-      }
 
       const chatForm = document.querySelector('.form')
 
