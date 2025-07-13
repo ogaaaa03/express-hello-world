@@ -171,7 +171,7 @@
   <!-- 誰のターンか(カワグチ) -->
   <div id="turnDisplay" style="font-size: 18px; font-weight: bold; margin-bottom: 10px;"></div>
 
-  <!-- 時間制限の表示 -->
+  <!-- 時間制限の表示(オガワ) -->
   <div id="timerDisplay" style="font-size: 24px; font-weight: bold; margin-bottom: 10px;"></div>
 
   <!-- ふたつのキャンバス -->
@@ -538,6 +538,47 @@
         receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
       }
 
+      //描画ターン、回答入力ターン、チャットモードそれぞれの処理(オガワ)
+      function setDrawingTurnUI() {
+        isDrawingTurn = true;
+        isAnsweringTurn = false;
+        enableDrawingTools(); // 描画ツールを有効化
+
+        chatForm.style.display = 'none';
+        sendPictureButton.style.display = 'block'
+        chatInput.placeholder = "絵を描いて「Send Picture」を押してください"
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
+
+      }
+
+      function setAnsweringTurnUI() {
+        isDrawingTurn = false;
+        isAnsweringTurn = true;
+        disableDrawingTools(); // 描画ツールを無効化
+
+        chatForm.style.display = 'flex';
+        sendPictureButton.style.display = 'none';
+        chatInput.placeholder = "何を描いたか”ひらがなで”入力してください";
+        chatInput.value = '';
+        chatInput.focus();
+      }
+
+      function setChatModeUI() {
+        isDrawingTurn = false;
+        isAnsweringTurn = false;
+
+        chatForm.style.display = 'flex';
+        sendPictureButton.style.display = 'none';
+        chatInput.placeholder = "チャットメッセージを入力";
+        chatInput.value = '';
+        chatInput.focus();
+
+        // 初期化時にキャンバスをクリア
+        ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
+      }
+
       // 接続時に参加したことえお知らせる(カワグチ)
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'join', id: myId }))
@@ -689,53 +730,53 @@
           li.textContent = msg.id + 'が入室しました '
           messageList.appendChild(li);
         }
+      }
 
-        const chatForm = document.querySelector('.form')
+      const chatForm = document.querySelector('.form')
 
-        //ゲーム開始前の処理(オガワ)
-        chatForm.onsubmit = function (e) {
-          e.preventDefault()
-          const input = document.querySelector('.input')
-          const text = input.value
+      //ゲーム開始前の処理(オガワ)
+      chatForm.onsubmit = function (e) {
+        e.preventDefault()
+        const input = document.querySelector('.input')
+        const text = input.value
 
-          if (!gameStarted) {
-            if (text !== '') { // 空のメッセージは送信しない
-              ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
-            }
+        if (!gameStarted) {
+          if (text !== '') { // 空のメッセージは送信しない
+            ws.send(JSON.stringify({ id: myId, text: text, type: 'chat' }));
+          }
+          input.value = ''
+          input.focus()
+          return;
+        }
+
+        //ゲーム中の処理(オガワ)
+        if (isAnsweringTurn) {
+          if (text !== '') {
+            ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
+            answers.push({ id: myId, text: text });
             input.value = ''
             input.focus()
-            return;
           }
-
-          //ゲーム中の処理(オガワ)
-          if (isAnsweringTurn) {
-            if (text !== '') {
-              ws.send(JSON.stringify({ id: myId, text: text, type: 'answer' }));
-              answers.push({ id: myId, text: text });
-              input.value = ''
-              input.focus()
-            }
-            //回答送信後次の人の絵のターンへ
-            setDrawingTurnUI();
-          }
+          //回答送信後次の人の絵のターンへ
+          setDrawingTurnUI();
         }
+      }
 
-        sendPictureButton.onclick = () => {
-          if (gameStarted && isDrawingTurn) {
-            currentDrawingData = canvas.toDataURL('image/png');
-            drawnImages.push(currentDrawingData);
-            console.log("保存された画像:" + drawnImages)
+      sendPictureButton.onclick = () => {
+        if (gameStarted && isDrawingTurn) {
+          currentDrawingData = canvas.toDataURL('image/png');
+          drawnImages.push(currentDrawingData);
+          console.log("保存された画像:" + drawnImages)
 
-            // 描かれた画像をサーバーに送信
-            ws.send(JSON.stringify({ type: 'image_sended', imageData: currentDrawingData }));
+          // 描かれた画像をサーバーに送信
+          ws.send(JSON.stringify({ type: 'image_sended', imageData: currentDrawingData }));
 
-            setAnsweringTurnUI();
-          }
+          setAnsweringTurnUI();
         }
+      }
 
-        ws.onerror = function (error) {
-          console.error('WebSocket Error: ', error)
-        }
+      ws.onerror = function (error) {
+        console.error('WebSocket Error: ', error)
       }
     }
 
