@@ -479,7 +479,7 @@
         //サーバーから描画ターンの制限時間を受け取る想定
         startTimer(60, () => {//数字は制限時間
           alert("描画ターン時間切れ！");
-          ws.send(JSON.stringfly({ type: 'drawing_time_up' }));
+          ws.send(JSON.stringify({ type: 'drawing_time_up' }));
           //描画ツールを無効化
           disableDrawingTools();
           //次の人にターンが移る処理
@@ -737,8 +737,9 @@
           console.error('WebSocket Error: ', error)
         }
       }
+    }
 
-      main()
+    main()
   </script>
 </body>
 
