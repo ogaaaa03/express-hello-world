@@ -269,6 +269,8 @@ function notifyNextTurn() {
     turnOrder: turnOrder,
     round: round,
     phase: currentPhase,
+    totalTurnsElapsed: gameConfig.totalTurnsElapsed, // 経過ターン数をクライアントに送る
+    maxTotalTurns: gameConfig.turnsPerRound * players.size // 最大総ターン数をクライアントに送る
   });
   broadcast(turnMsg);
 }
