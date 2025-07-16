@@ -303,11 +303,11 @@
 
             const timerDisplay = document.getElementById('timerDisplay');
 
+            const gameArea = document.getElementById('game-area'); // ゲーム要素の親コンテナ（オガワ)
+
             //描画モードか、回答入力モードか(オガワ)
             let isDrawingTurn = false; //絵を描くターンかどうか
             let isAnsweringTurn = false; //回答入力ターンかどうか
-
-            const gameArea = document.getElementById('game-area'); // ゲーム要素の親コンテナ（適宜変更）
 
             // --- 初期設定(カワグチ) ---
             function initializeUI() {
@@ -1005,9 +1005,6 @@
                     restartButton.style.padding = '10px 20px';
                     restartButton.style.fontSize = '1.2em';
                     restartButton.style.cursor = 'pointer';
-                    restartButton.style.backgroundColor = '#28a745';
-                    restartButton.style.color = 'white';
-                    restartButton.style.border = 'none';
                     restartButton.style.borderRadius = '5px';
                     restartButton.onclick = () => {
                         location.reload(); // ページをリロードして初期状態に戻す
