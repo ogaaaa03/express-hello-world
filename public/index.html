@@ -305,6 +305,8 @@
 
             const gameArea = document.getElementById('game-area'); // ゲーム要素の親コンテナ（オガワ)
 
+            const resultsContainer = document.createElement('div');
+
             //描画モードか、回答入力モードか(オガワ)
             let isDrawingTurn = false; //絵を描くターンかどうか
             let isAnsweringTurn = false; //回答入力ターンかどうか
@@ -595,17 +597,23 @@
 
             // --- ゲームUIを初期状態に戻す関数を定義(オガワ) ---
             function resetClientUI() {
-                // 全てのゲーム関連UIを非表示にする
-                gameControls.classList.add('hidden'); // ゲーム開始設定も一旦隠す
-                drawingToolsContainer.classList.add('hidden');
-                canvasesContainer.classList.add('hidden');
-                chatForm.classList.add('hidden');
-                firstCharEl.classList.add('hidden');
-                turnOrderDisplay.classList.add('hidden');
-                currentTurnInfo.classList.add('hidden');
-                timerDisplay.classList.add('hidden');
-                standbyMessageElement.classList.add('hidden');
+                // 初期UIを表示
+                gameControls.classList.remove('hidden');
+                chatForm.classList.remove('hidden');
+                canvasesContainer.classList.remove('hidden');
+                drawingToolsContainer.classList.remove('hidden');
                 sendPictureButton.classList.add('hidden');
+                standbyMessageElement.classList.add('hidden');
+                timerDisplay.classList.add('hidden');
+                firstCharEl.classList.add('hidden');
+                turnOrderDisplay.classList.remove('hidden'); // プレイヤー数とターン順は常に表示
+                currentTurnInfo.classList.add('hidden'); // ゲーム開始前は非表示
+                enableChatInput(); // ゲーム開始前はチャット入力無効
+                console.log('[クライアント] UIが初期状態にリセットされました。');
+
+                if (resultsContainer) {
+                    resultsContainer.remove(); // これでDOMから削除される
+                }
 
                 // キャンバスをクリア
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -620,20 +628,6 @@
                 answers = [];
                 drawnImages = [];
                 // myId は保持 (再参加のため)
-
-                // 初期UIを表示
-                gameControls.classList.remove('hidden');
-                chatForm.classList.remove('hidden');
-                canvasesContainer.classList.remove('hidden');
-                drawingToolsContainer.classList.remove('hidden');
-                sendPictureButton.classList.add('hidden');
-                standbyMessageElement.classList.add('hidden');
-                timerDisplay.classList.add('hidden');
-                firstCharEl.classList.add('hidden');
-                turnOrderDisplay.classList.remove('hidden'); // プレイヤー数とターン順は常に表示
-                currentTurnInfo.classList.add('hidden'); // ゲーム開始前は非表示
-                enableChatInput(); // ゲーム開始前はチャット入力無効
-                console.log('[クライアント] UIが初期状態にリセットされました。');
             }
 
             //描画ターン、回答入力ターン、チャットモードそれぞれの処理(オガワ)
@@ -983,7 +977,6 @@
                     standbyMessageElement.classList.add('hidden'); // 既存の待機メッセージも非表示にする
 
                     // --- ここから結果表示UIの構築 ---
-                    const resultsContainer = document.createElement('div');
                     resultsContainer.id = 'gameResults';
                     resultsContainer.style.textAlign = 'center';
                     resultsContainer.style.marginTop = '20px';
