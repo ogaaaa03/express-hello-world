@@ -610,6 +610,11 @@
                 redoButton.classList.add('hidden');
                 clearCanvasButton.classList.add('hidden'); // クリアボタンも非表示に
 
+                const resultsContainer = document.getElementById('gameResults');
+                if (resultsContainer) {
+                    resultsContainer.remove(); // これでDOMから削除される
+                }
+
                 // キャンバスをクリア
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
@@ -1063,6 +1068,7 @@
                     restartButton.style.cursor = 'pointer';
                     restartButton.style.borderRadius = '5px';
                     restartButton.onclick = () => {
+                        console.log('[クライアント] 「もう一度プレイする」ボタンがクリックされました。');
                         resetClientUI(); // ページをリロードして初期状態に戻す
                     };
                     resultsContainer.appendChild(restartButton);
