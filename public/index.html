@@ -593,45 +593,6 @@
                 }, 1000);
             }
 
-            // --- ゲームUIを初期状態に戻す関数を定義(オガワ) ---
-            function resetClientUI() {
-                // 全てのゲーム関連UIを非表示にする
-                gameControls.classList.add('hidden'); // ゲーム開始設定も一旦隠す
-                drawingToolsContainer.classList.add('hidden');
-                canvasesContainer.classList.add('hidden');
-                chatForm.classList.add('hidden');
-                firstCharEl.classList.add('hidden');
-                turnOrderDisplay.classList.add('hidden');
-                currentTurnInfo.classList.add('hidden');
-                timerDisplay.classList.add('hidden');
-                standbyMessageElement.classList.add('hidden');
-                sendPictureButton.classList.add('hidden');
-                
-                // キャンバスをクリア
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
-                canvas.classList.remove('hidden'); // 自分のキャンバスは表示
-                receivedCanvas.style.display = 'none'; // 受信キャンバスは非表示に戻す
-
-                // ゲーム状態フラグをリセット
-                gameStarted = false;
-                isDrawingTurn = false;
-                isAnsweringTurn = false;
-                answers = [];
-                drawnImages = [];
-                // myId は保持 (再参加のため)
-
-                // 初期UIを表示
-                gameControls.classList.remove('hidden'); // ゲーム開始設定を表示
-                chatForm.classList.remove('hidden'); // チャットフォームを表示
-                // player_count_update はサーバーから自動で送られてくるので、ここでは特に操作しない
-                standbyMessageElement.textContent = `参加者募集中... あなたのID: ${myId}`;
-                standbyMessageElement.classList.remove('hidden');
-                standbyMessageElement.style.fontSize = ""; // フォントサイズをリセット
-                standbyMessageElement.style.color = ""; // 色をリセット
-                console.log('[クライアント] UIが初期状態にリセットされました。');
-            }
-
             //描画ターン、回答入力ターン、チャットモードそれぞれの処理(オガワ)
             function setDrawingTurnUI() {
                 isDrawingTurn = true;
@@ -848,13 +809,6 @@
                     return;
                 }
 
-                // --- game_reset メッセージの処理を追加(オガワ) ---
-                if (msg.type === 'game_reset') {
-                    console.log('[クライアント] ゲームリセット通知を受信。UIを初期化します。');
-                    resetClientUI();
-                    return;
-                }
-
                 //人数更新が送られてきたら (カワグチ)
                 if (msg.type === 'player_count_update') {
                     console.log(`[クライアント] player_count_updateを受信: ${msg.count}人`);
@@ -1053,7 +1007,7 @@
                     restartButton.style.cursor = 'pointer';
                     restartButton.style.borderRadius = '5px';
                     restartButton.onclick = () => {
-                        resetClientUI(); // ページをリロードして初期状態に戻す
+                        location.reload(); // ページをリロードして初期状態に戻す
                     };
                     resultsContainer.appendChild(restartButton);
 
