@@ -333,7 +333,7 @@
                 )
 
                 if (confirmed) {
-                    ws.send(JSON.stringify({ type: 'start' }))
+                    ws.send(JSON.stringify({ type: 'start', rounds: parseInt(round), turns: parseInt(turn) }))
 
                     gameStarted = true; //ゲーム開始状態にする(オガワ)
                     //ゲーム開始時は描画ターン(オガワ)
@@ -971,6 +971,45 @@
 
                 if (msg.type === 'leave') {
                     appendMessage('システム', `${msg.id}が退室しました`, myId);
+                    return;
+                }
+
+                if (msg.type === 'game_end') {
+                    // 既存のタイマーを停止
+                    clearInterval(countdownInterval);
+                    timerDisplay.classList.add('hidden');
+
+                    // 全てのゲーム関連UIを非表示にする
+                    gameControls.classList.add('hidden');
+                    canvasesContainer.classList.add('hidden');
+                    drawingToolsContainer.classList.add('hidden');
+                    sendPictureButton.classList.add('hidden');
+                    chatForm.classList.add('hidden');
+                    firstCharEl.classList.add('hidden');
+                    turnOrderDisplay.classList.add('hidden');
+                    currentTurnInfo.classList.add('hidden');
+                    playerCountDisplay.classList.add('hidden'); // 必要であれば
+
+                    // ゲーム終了メッセージを表示
+                    standbyMessageElement.classList.remove('hidden');
+                    standbyMessageElement.textContent = msg.message || "ゲーム終了！お疲れ様でした！"; // サーバーからのメッセージを使用
+                    standbyMessageElement.style.fontSize = "3em";
+                    standbyMessageElement.style.color = "purple";
+
+                    // ゲーム状態をリセット
+                    gameStarted = false;
+                    isDrawingTurn = false;
+                    isAnsweringTurn = false;
+                    // 必要であれば、answers配列やdrawnImages配列もクリア
+
+                    // ページをリロードして初期状態に戻すボタンなどを追加しても良いでしょう
+                    const restartButton = document.createElement('button');
+                    restartButton.textContent = 'もう一度プレイする';
+                    restartButton.onclick = () => {
+                        location.reload(); // ページをリロードして初期状態に戻す
+                    };
+                    standbyMessageElement.parentNode.insertBefore(restartButton, standbyMessageElement.nextSibling);
+
                     return;
                 }
             }

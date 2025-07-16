@@ -21,6 +21,13 @@ let currentTurnIndex = 0;
 let round = 1;
 let currentPhase = 'drawing';
 
+let gameStarted = false; // ゲームが開始されているか(オガワ)
+let gameConfig = { // ゲーム設定(オガワ)
+  rounds: 0,
+  turnsPerRound: 0,
+  totalTurnsElapsed: 0 // 経過した総ターン数(オガワ)
+};
+
 app.use(express.static('public'))
 
 app.ws('/ws', (ws, req) => {
@@ -57,6 +64,21 @@ app.ws('/ws', (ws, req) => {
     }
 
     if (msg.type === 'start') {
+      //エラーメッセージ(オガワ)
+      if (gameStarted) {
+        ws.send(JSON.stringify({ type: 'error', message: 'ゲームはすでに開始されています。' }));
+        return;
+      }
+      if (players.size === 0) {
+        ws.send(JSON.stringify({ type: 'error', message: 'プレイヤーがいません。' }));
+        return;
+      }
+
+      // クライアントから送られてきたラウンド数とターン数を受け取る(オガワ)
+      gameConfig.rounds = parseInt(msg.rounds);
+      gameConfig.turnsPerRound = parseInt(msg.turns);
+      gameConfig.totalTurnsElapsed = 0; // ゲーム開始時に経過ターン数をリセット
+
       // ひらがな1文字をランダムに選ぶ(カワグチ)
       const firstChar = getRandomHiragana();
       const shuffledPlayers = Array.from(players).sort(() => Math.random() - 0.5);
@@ -64,6 +86,7 @@ app.ws('/ws', (ws, req) => {
       turnOrder = shuffledPlayers;
       currentTurnIndex = 0;
       currentPhase = 'drawing';
+      gameStarted = true; // ゲームを開始状態にする
 
       // 全接続にゲーム開始通知を送る(カワグチ)
       connects.forEach((socket) => {
@@ -73,6 +96,11 @@ app.ws('/ws', (ws, req) => {
             firstChar: firstChar,
             turnOrder: shuffledPlayers,
             remainingTime: 60,
+
+            currentTurn: turnOrder[currentTurnIndex], // 最初のターンのプレイヤーも送る
+            phase: currentPhase, // 最初のフェーズも送る
+            rounds: gameConfig.rounds, // 設定されたラウンド数を送る
+            turns: gameConfig.turnsPerRound // 設定されたターン数を送る
           }));
         }
       });
@@ -190,6 +218,13 @@ function resetGameState() {
   turnOrder = [];
   currentTurnIndex = 0;
   round = 1;
+
+  gameStarted = false; // ゲーム状態もリセット
+  gameConfig = { // gameConfigもリセット
+    rounds: 0,
+    turnsPerRound: 0,
+    totalTurnsElapsed: 0
+  };
 }
 
 
@@ -206,6 +241,17 @@ function broadcast(message) {
 function advanceTurn() {
   // 現在のフェーズが「回答中」の場合にのみ、次のプレイヤーへターンを進める
   if (currentPhase === 'answering') {
+    gameConfig.totalTurnsElapsed++; // ターンを進めるたびに加算
+    console.log(`[サーバー] 経過総ターン数: ${gameConfig.totalTurnsElapsed} / ${gameConfig.rounds * gameConfig.turnsPerRound}`);
+
+    // ゲーム終了条件の判定
+    if (gameConfig.totalTurnsElapsed >= gameConfig.turnsPerRound * players.size) {
+      console.log('[サーバー] 設定された総ターン数に達しました。ゲームを終了します。');
+      broadcast(JSON.stringify({ type: 'game_end', message: 'ゲーム終了！設定されたターン数に達しました。' }));
+      resetGameState(); // ゲーム終了後に状態をリセット
+      return; // ゲーム終了のため、これ以上ターンを進めない
+    }
+
     currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
     if (currentTurnIndex === 0) {
       round++;
@@ -231,6 +277,8 @@ function notifyNextTurn() {
     turnOrder: turnOrder,
     round: round,
     phase: currentPhase,
+    totalTurnsElapsed: gameConfig.totalTurnsElapsed, // 経過ターン数をクライアントに送る
+    maxTotalTurns: gameConfig.turnsPerRound * players.size // 最大総ターン数をクライアントに送る
   });
   broadcast(turnMsg);
 }
