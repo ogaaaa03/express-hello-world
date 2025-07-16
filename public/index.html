@@ -202,11 +202,6 @@
         </div>
 
         <div class="game-controls">
-            <!-- ラウンド数選択(スピンボタン方式)(カワグチ) -->
-            <label>
-                ラウンド数:
-                <input type="number" id="roundSelect" class="number-input" min="1" max="10" step="1" value="3">
-            </label>
             <!-- ターン数選択(スピンボタン方式)(カワグチ) -->
             <label style="margin-left: 20px;">
                 ターン数:
@@ -329,16 +324,15 @@
 
             // ゲーム開始ボタンが押されたら(カワグチ)
             startButton.onclick = () => {
-                const round = document.getElementById('roundSelect').value
                 const turn = document.getElementById('turnSelect').value
                 const playerCount = players.size
 
                 const confirmed = confirm(
-                    `入室人数: ${playerCount}人\nラウンド数: ${round}ラウンド\nターン数: ${turn}ターン\n\nゲームを開始しますか？`
+                    `入室人数: ${playerCount}人\nターン数: ${turn}ターン\n\nゲームを開始しますか？`
                 )
 
                 if (confirmed) {
-                    ws.send(JSON.stringify({ type: 'start', rounds: parseInt(round), turns: parseInt(turn) }))
+                    ws.send(JSON.stringify({ type: 'start', turns: parseInt(turn) }))
 
                     gameStarted = true; //ゲーム開始状態にする(オガワ)
                     //ゲーム開始時は描画ターン(オガワ)
