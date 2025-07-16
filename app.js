@@ -235,6 +235,8 @@ function broadcastPlayerCount() {
   if (playerCount === 0 && turnOrder.length > 0) {
     console.log("全プレイヤーが退出しました。ゲーム状態をリセットします。");
     resetGameState(); // 後述するリセット関数を呼び出す
+    // ゲーム終了後にリセットされたことをクライアントに通知
+    broadcast(JSON.stringify({ type: 'game_reset' }));
   }
 }
 function resetGameState() {
@@ -275,48 +277,51 @@ function advanceTurn() {
     if (gameConfig.totalTurnsElapsed >= gameConfig.turnsPerRound * players.size) {
       console.log('[サーバー] 設定された総ターン数に達しました。ゲームを終了します。');
       broadcast(JSON.stringify({
-        type: 'game_end', message: 'ゲーム終了！設定されたターン数に達しました。', gameRecord: gameRecord }));
+        type: 'game_end', message: 'ゲーム終了！設定されたターン数に達しました。', gameRecord: gameRecord
+      }));
       resetGameState(); // ゲーム終了後に状態をリセット
+      // ゲーム終了後にリセットされたことをクライアントに通知(オガワ)
+      broadcast(JSON.stringify({ type: 'game_reset' }));
       return; // ゲーム終了のため、これ以上ターンを進めない
-      }
+    }
 
     currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
-      if (currentTurnIndex === 0) {
-        round++;
-        console.log(`サーバー: ラウンド終了。次のラウンド: ${round}`);
-      }
-      currentPhase = 'drawing'; // 次の人の描画フェーズへ
-      console.log(`サーバー: フェーズ移行: 回答 -> 描画 (現在ターン: ${turnOrder[currentTurnIndex]})`);
+    if (currentTurnIndex === 0) {
+      round++;
+      console.log(`サーバー: ラウンド終了。次のラウンド: ${round}`);
     }
-    else {
-      console.warn(`サーバー: currentPhaseが'answering'ではない状態でadvanceTurnが呼ばれました (現在のフェーズ: ${currentPhase})`);
-    }
-
-    notifyNextTurn(); // フェーズが進んだことをクライアントに通知
+    currentPhase = 'drawing'; // 次の人の描画フェーズへ
+    console.log(`サーバー: フェーズ移行: 回答 -> 描画 (現在ターン: ${turnOrder[currentTurnIndex]})`);
+  }
+  else {
+    console.warn(`サーバー: currentPhaseが'answering'ではない状態でadvanceTurnが呼ばれました (現在のフェーズ: ${currentPhase})`);
   }
 
+  notifyNextTurn(); // フェーズが進んだことをクライアントに通知
+}
 
-  // 次のプレイヤーに通知(カワグチ)
-  function notifyNextTurn() {
-    const currentPlayer = turnOrder[currentTurnIndex];
-    const turnMsg = JSON.stringify({
-      type: 'next_turn',
-      currentTurn: currentPlayer,
-      turnOrder: turnOrder,
-      round: round,
-      phase: currentPhase,
-      totalTurnsElapsed: gameConfig.totalTurnsElapsed, // 経過ターン数をクライアントに送る
-      maxTotalTurns: gameConfig.turnsPerRound * players.size // 最大総ターン数をクライアントに送る
-    });
-    broadcast(turnMsg);
-  }
 
-  //ひらがな　一文字を選ぶ関数(カワグチ)
-  function getRandomHiragana() {
-    const hira = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
-    return hira[Math.floor(Math.random() * hira.length)];
-  }
+// 次のプレイヤーに通知(カワグチ)
+function notifyNextTurn() {
+  const currentPlayer = turnOrder[currentTurnIndex];
+  const turnMsg = JSON.stringify({
+    type: 'next_turn',
+    currentTurn: currentPlayer,
+    turnOrder: turnOrder,
+    round: round,
+    phase: currentPhase,
+    totalTurnsElapsed: gameConfig.totalTurnsElapsed, // 経過ターン数をクライアントに送る
+    maxTotalTurns: gameConfig.turnsPerRound * players.size // 最大総ターン数をクライアントに送る
+  });
+  broadcast(turnMsg);
+}
 
-  app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`)
-  })
+//ひらがな　一文字を選ぶ関数(カワグチ)
+function getRandomHiragana() {
+  const hira = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+  return hira[Math.floor(Math.random() * hira.length)];
+}
+
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`)
+})
