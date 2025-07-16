@@ -628,13 +628,17 @@
                 // myId は保持 (再参加のため)
 
                 // 初期UIを表示
-                gameControls.classList.remove('hidden'); // ゲーム開始設定を表示
-                chatForm.classList.remove('hidden'); // チャットフォームを表示
-                // player_count_update はサーバーから自動で送られてくるので、ここでは特に操作しない
-                standbyMessageElement.textContent = `参加者募集中... あなたのID: ${myId}`;
-                standbyMessageElement.classList.remove('hidden');
-                standbyMessageElement.style.fontSize = ""; // フォントサイズをリセット
-                standbyMessageElement.style.color = ""; // 色をリセット
+                gameControls.classList.remove('hidden');
+                chatForm.classList.remove('hidden');
+                canvasesContainer.classList.remove('hidden');
+                drawingToolsContainer.classList.remove('hidden');
+                sendPictureButton.classList.add('hidden');
+                standbyMessageElement.classList.add('hidden');
+                timerDisplay.classList.add('hidden');
+                firstCharEl.classList.add('hidden');
+                turnOrderDisplay.classList.remove('hidden'); // プレイヤー数とターン順は常に表示
+                currentTurnInfo.classList.add('hidden'); // ゲーム開始前は非表示
+                enableChatInput(); // ゲーム開始前はチャット入力無効
                 console.log('[クライアント] UIが初期状態にリセットされました。');
             }
 

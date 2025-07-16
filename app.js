@@ -235,8 +235,6 @@ function broadcastPlayerCount() {
   if (playerCount === 0 && turnOrder.length > 0) {
     console.log("全プレイヤーが退出しました。ゲーム状態をリセットします。");
     resetGameState(); // 後述するリセット関数を呼び出す
-    // ゲーム終了後にリセットされたことをクライアントに通知
-    broadcast(JSON.stringify({ type: 'game_reset' }));
   }
 }
 function resetGameState() {
@@ -254,6 +252,7 @@ function resetGameState() {
     totalTurnsElapsed: 0
   };
   gameRecord = []; // ゲームリセット時に履歴もクリア
+  broadcast(JSON.stringify({ type: 'game_reset' }));
 }
 
 
@@ -280,8 +279,6 @@ function advanceTurn() {
         type: 'game_end', message: 'ゲーム終了！設定されたターン数に達しました。', gameRecord: gameRecord
       }));
       resetGameState(); // ゲーム終了後に状態をリセット
-      // ゲーム終了後にリセットされたことをクライアントに通知(オガワ)
-      broadcast(JSON.stringify({ type: 'game_reset' }));
       return; // ゲーム終了のため、これ以上ターンを進めない
     }
 
