@@ -21,9 +21,11 @@
             display: flex;
             flex-direction: column;
             height: 80vh;
-            width: 400px;
-            /* チャットエリアの幅を固定 */
+            /* チャットの幅調整(カワグチ) */
+            width: calc(100vw - 70px);
             margin-bottom: 20px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .messages {
@@ -185,7 +187,6 @@
             margin: 50px auto;
             width: 80%;
             box-sizing: border-box;
-            /* paddingを含めて幅を計算 */
         }
     </style>
 </head>
@@ -333,7 +334,7 @@
                 )
 
                 if (confirmed) {
-                    ws.send(JSON.stringify({ type: 'start' }))
+                    ws.send(JSON.stringify({ type: 'start', rounds: parseInt(round), turns: parseInt(turn) }))
 
                     gameStarted = true; //ゲーム開始状態にする(オガワ)
                     //ゲーム開始時は描画ターン(オガワ)
@@ -589,27 +590,6 @@
             }
 
             //描画ターン、回答入力ターン、チャットモードそれぞれの処理(オガワ)
-            // function setDrawingTurnUI() {
-            //     isDrawingTurn = true;
-            //     isAnsweringTurn = false;
-            //     enableDrawingTools(); // 描画ツールを有効化
-
-            //     chatForm.style.display = 'none';
-            //     sendPictureButton.style.display = 'block'
-            //     chatInput.placeholder = "絵を描いて「Send Picture」を押してください"
-            //     ctx.clearRect(0, 0, canvas.width, canvas.height);
-            //     receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
-
-            //     //サーバーから描画ターンの制限時間を受け取る想定
-            //     startTimer(60, () => {//数字は制限時間
-            //         alert("描画ターン時間切れ！");
-            //         ws.send(JSON.stringify({ type: 'drawing_time_up' }));
-            //         //描画ツールを無効化
-            //         disableDrawingTools();
-            //         //次の人にターンが移る処理
-            //     });
-            // }
-
             function setDrawingTurnUI() {
                 isDrawingTurn = true;
                 isAnsweringTurn = false;
@@ -647,27 +627,6 @@
                     ws.send(JSON.stringify({ type: 'drawing_completed' }));
                 });
             }
-
-            // function setAnsweringTurnUI() {
-            //     isDrawingTurn = false;
-            //     isAnsweringTurn = true;
-            //     disableDrawingTools(); // 描画ツールを無効化
-
-            //     chatForm.style.display = 'flex';
-            //     sendPictureButton.style.display = 'none';
-            //     chatInput.placeholder = "何を描いたか”ひらがなで”入力してください";
-            //     chatInput.value = '';
-            //     chatInput.focus();
-
-            //     // サーバーから回答ターンの制限時間を受け取る想定
-            //     startTimer(30, () => { // 例: 回答ターンは30秒
-            //         alert("回答ターン時間切れ！");
-            //         ws.send(JSON.stringify({ type: 'answering_time_up' })); // サーバーに時間切れを通知
-            //         // チャット入力を無効化し、次のターンへのUIを準備（サーバーからの指示で最終的に切り替わる）
-            //         disableChatInput(); // 新しい関数を作成
-            //         //次の人にターンに移る処理
-            //     });
-            // }
 
             function setAnsweringTurnUI() {
                 isDrawingTurn = false;
@@ -754,26 +713,6 @@
                 messageList.appendChild(li)
             }
 
-            // function setChatModeUI() {
-            //     isDrawingTurn = false;
-            //     isAnsweringTurn = false;
-
-            //     clearInterval(countdownInterval); // タイマーを停止
-            //     document.getElementById('timerDisplay').textContent = ''; // タイマー表示をクリア
-
-            //     chatForm.style.display = 'flex';
-            //     sendPictureButton.style.display = 'none';
-            //     chatInput.placeholder = "チャットメッセージを入力";
-            //     chatInput.value = '';
-            //     chatInput.focus();
-
-            //     enableChatInput(); // チャットモードではチャット入力を有効に
-
-            //     // 初期化時にキャンバスをクリア
-            //     ctx.clearRect(0, 0, canvas.width, canvas.height);
-            //     receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
-            // }
-
             // 接続時に参加したことえお知らせる(カワグチ)
             ws.onopen = () => {
                 ws.send(JSON.stringify({ type: 'join', id: myId }))
@@ -844,7 +783,7 @@
                     return
                 }
 
-                // サーバーから初期情報が送られてきた場合 (type: 'init')
+                // 初期情報が送られてきたら(カワグチ)
                 if (msg.type === 'init') {
                     // クライアント側のplayers Setをサーバーの最新状態に同期
                     players = new Set(msg.players);
@@ -866,7 +805,7 @@
                     return;
                 }
 
-                // サーバーからプレイヤー人数更新が送られてきた場合 (type: 'player_count_update')
+                //人数更新が送られてきたら (カワグチ)
                 if (msg.type === 'player_count_update') {
                     console.log(`[クライアント] player_count_updateを受信: ${msg.count}人`);
                     if (playerCountDisplay) {
@@ -876,9 +815,6 @@
                     }
                     return;
                 }
-
-
-
 
                 //スタートボタンが押されたら(カワグチ)
                 if (msg.type === 'start') {
@@ -969,6 +905,7 @@
                     return
                 }
 
+                //退室したら(カワグチ)
                 if (msg.type === 'leave') {
                     appendMessage('システム', `${msg.id}が退室しました`, myId);
                     return;
