@@ -307,6 +307,8 @@
             let isDrawingTurn = false; //絵を描くターンかどうか
             let isAnsweringTurn = false; //回答入力ターンかどうか
 
+            const gameArea = document.getElementById('game-area'); // ゲーム要素の親コンテナ（適宜変更）
+
             // --- 初期設定(カワグチ) ---
             function initializeUI() {
                 // ゲーム開始前は、ゲームコントロールとチャットフォームのみ表示
