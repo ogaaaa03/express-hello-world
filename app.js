@@ -19,6 +19,7 @@ let turnOrder = [];
 let currentTurnIndex = 0;
 // ラウンドの制御(カワグチ)
 let round = 1;
+let currentPhase = 'drawing';
 
 app.use(express.static('public'))
 
@@ -62,6 +63,7 @@ app.ws('/ws', (ws, req) => {
       console.log('Sending start message with turnOrder:', shuffledPlayers);
       turnOrder = shuffledPlayers;
       currentTurnIndex = 0;
+      currentPhase = 'drawing';
 
       // 全接続にゲーム開始通知を送る(カワグチ)
       connects.forEach((socket) => {
@@ -80,22 +82,49 @@ app.ws('/ws', (ws, req) => {
 
     // turnが終了したら(カワグチ)
     if (msg.type === 'turn_end') {
-      console.log('サーバーで turn_end を受信');
-      advanceTurn();
+      console.log('サーバーで turn_end を受信 (回答完了)');
+      if (currentPhase === 'answering') {
+        advanceTurn(); // 次のプレイヤーの描画フェーズへ
+      }
       return;
     }
 
     // 描画が完了したら(カワグチ)
     if (msg.type === 'drawing_completed') {
       console.log('サーバーで drawing_completed を受信');
-      // まだ回答ターンなのでターンは進めない
+      // 描画フェーズ中で、かつ現在のターンプレイヤーからの描画完了通知であること
+      if (currentPhase === 'drawing' && wsUserMap.get(ws) === turnOrder[currentTurnIndex]) {
+        currentPhase = 'answering'; // フェーズを回答中に変更
+        console.log(`サーバー: フェーズ移行: 描画 -> 回答 (現在ターン: ${turnOrder[currentTurnIndex]})`);
+        notifyNextTurn(); // 回答フェーズになったことをクライアントに通知
+      }
       return;
     }
 
     // 描画時間切れや回答時間切れおこしたとき(カワグチ)
     if (msg.type === 'drawing_time_up' || msg.type === 'answering_time_up') {
       console.log(`サーバーで ${msg.type} を受信`);
-      advanceTurn();
+      if (msg.type === 'drawing_time_up' && currentPhase === 'drawing' && wsUserMap.get(ws) === turnOrder[currentTurnIndex]) {
+        // 描画時間切れで、かつ現在のターンプレイヤーの描画フェーズであれば、回答フェーズへ
+        currentPhase = 'answering';
+        console.log(`サーバー: 描画時間切れによりフェーズ移行: 描画 -> 回答 (現在ターン: ${turnOrder[currentTurnIndex]})`);
+        notifyNextTurn(); // 回答フェーズになったことをクライアントに通知
+      } else if (msg.type === 'answering_time_up' && currentPhase === 'answering' && wsUserMap.get(ws) === turnOrder[currentTurnIndex]) {
+        // 回答時間切れで、かつ現在のターンプレイヤーの回答フェーズであれば、次のプレイヤーの描画フェーズへ
+        advanceTurn(); // 次のプレイヤーの描画フェーズへ
+      }
+      return;
+    }
+
+    //チャットや回答(カワグチ)
+    if (msg.type === 'chat' || msg.type === 'answer') {
+      broadcast(message);
+      if (msg.type === 'chat') {
+        chatHistory.push({ id: msg.id, text: msg.text });
+        if (chatHistory.length > 50) {
+          chatHistory.shift();
+        }
+      }
       return;
     }
 
@@ -175,12 +204,23 @@ function broadcast(message) {
 
 //ターンを進める(カワグチ)
 function advanceTurn() {
-  currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
-  if (currentTurnIndex === 0) {
-    round++;
+  // 現在のフェーズが「回答中」の場合にのみ、次のプレイヤーへターンを進める
+  if (currentPhase === 'answering') {
+    currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
+    if (currentTurnIndex === 0) {
+      round++;
+      console.log(`サーバー: ラウンド終了。次のラウンド: ${round}`);
+    }
+    currentPhase = 'drawing'; // 次の人の描画フェーズへ
+    console.log(`サーバー: フェーズ移行: 回答 -> 描画 (現在ターン: ${turnOrder[currentTurnIndex]})`);
   }
-  notifyNextTurn();
+  else {
+    console.warn(`サーバー: currentPhaseが'answering'ではない状態でadvanceTurnが呼ばれました (現在のフェーズ: ${currentPhase})`);
+  }
+
+  notifyNextTurn(); // フェーズが進んだことをクライアントに通知
 }
+
 
 // 次のプレイヤーに通知(カワグチ)
 function notifyNextTurn() {
@@ -189,7 +229,8 @@ function notifyNextTurn() {
     type: 'next_turn',
     currentTurn: currentPlayer,
     turnOrder: turnOrder,
-    round: round
+    round: round,
+    phase: currentPhase,
   });
   broadcast(turnMsg);
 }

@@ -21,6 +21,9 @@
             display: flex;
             flex-direction: column;
             height: 80vh;
+            width: 400px;
+            /* チャットエリアの幅を固定 */
+            margin-bottom: 20px;
         }
 
         .messages {
@@ -141,6 +144,8 @@
             /* キャンバスを中央寄せ */
             align-items: flex-start;
             /* 上端を揃える */
+            position: relative;
+            /* 子要素の絶対配置のため(オタニ追加) */
         }
 
         .canvases-container canvas {
@@ -156,6 +161,14 @@
         #canvas {
             border: solid 1px black;
             /* 描画用キャンバスの枠線 */
+        }
+
+        /* カーソルガイド用キャンバスを重ねて表示(オタニ追加) */
+        #cursorCanvas {
+            position: absolute;
+            pointer-events: none;
+            top: 0;
+            left: 0;
         }
 
         /* UIの表示/非表示制御(カワグチ) */
@@ -203,7 +216,7 @@
 
     <!-- ルームの状況(カワグチ) -->
     <div id="gameStatus" style="font-size: 20px; font-weight: bold; margin: 10px 0;">
-        <span id="firstChar" style="display: none;">最初の文字は </span>
+        <span id="firstChar">最初の文字は </span>
         <span id="playerCountDisplay"></span>
         <br />
         <!-- 誰のターンか(カワグチ) -->
@@ -220,6 +233,9 @@
         <div class="canvases-container">
             <canvas id="receivedCanvas" width="600" height="600"></canvas>
             <canvas id="canvas" width="600" height="600"></canvas>
+            <!-- コンソールガイド用キャンバス(オタニ追加) -->
+            <canvas id="cursorCanvas" width="600" height="600"
+                style="position: absolute; pointer-events: none;"></canvas>
         </div>
 
         <div class="drawing-tools">
@@ -336,6 +352,18 @@
             const canvas = document.getElementById('canvas')
             const ctx = canvas.getContext('2d')
 
+            //カーソルガイドのコンテキストを取得(オタニ追加)
+            const cursorCanvas = document.getElementById('cursorCanvas');
+            const cursorCtx = cursorCanvas.getContext('2d');
+
+            // 右の #canvas を基準に座標調整(オタニ追加)
+            function updateCursorCanvasPosition() {
+                const canvasRect = canvas.getBoundingClientRect();
+                cursorCanvas.style.left = canvas.offsetLeft + 'px';
+                cursorCanvas.style.top = canvas.offsetTop + 'px';
+            }
+            updateCursorCanvasPosition();
+
             //ColorPickerの色、線の太さ、消しゴムをcanvasに反映させる(オタニ追加)
             const colorPicker = document.getElementById('colorPicker');
             const lineWidthSlider = document.getElementById('lineWidthSlider');
@@ -392,16 +420,57 @@
                 ctx.beginPath();
             }
 
+            //マウスが動いた時にカーソルガイドを描画(オタニ追加)
             canvas.addEventListener('mousemove', (e) => {
-                if (drawing) {
-                    sendDrawingEvent(e.offsetX, e.offsetY, 'mousemove')
+                if (!gameStarted || !isDrawingTurn) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const size = parseInt(lineWidthSlider.value) + 4;
+                const half = size / 2;
+
+                cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+
+                // 描画色を取得（消しゴム時は白）
+                const colorValue = colorPicker?.value || '#000000';
+                const drawColor = eraserMode ? '#ffffff' : colorValue;
+
+                // 塗りつぶし色
+                let fillColor = drawColor;
+                if (/^#[0-9A-F]{6}$/i.test(drawColor)) {
+                    const r = parseInt(drawColor.substr(1, 2), 16);
+                    const g = parseInt(drawColor.substr(3, 2), 16);
+                    const b = parseInt(drawColor.substr(5, 2), 16);
+                    fillColor = `rgba(${r}, ${g}, ${b}, 1.0)`; // 塗り色
                 }
-            })
+
+                // 枠線の色（消しゴム時は黒、それ以外は同じ色）
+                const strokeColor = eraserMode ? 'glay' : fillColor;
+
+                // 描画
+                cursorCtx.fillStyle = fillColor;
+                cursorCtx.fillRect(x - half, y - half, size, size);
+
+                cursorCtx.strokeStyle = strokeColor;
+                cursorCtx.lineWidth = 1;
+                cursorCtx.strokeRect(x - half, y - half, size, size);
+
+                if (drawing) {
+                    sendDrawingEvent(e.offsetX, e.offsetY, 'mousemove');
+                }
+            });
+
             function mousemove(x, y) {
                 if (drawing) {
                     draw(x, y, true)
                 }
             }
+
+            canvas.addEventListener('mouseout', () => {
+                cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+            });
 
             canvas.addEventListener('mouseup', (e) => {
                 sendDrawingEvent(e.offsetX, e.offsetY, 'mouseup')
@@ -575,6 +644,7 @@
                     ws.send(JSON.stringify({ type: 'drawing_time_up' }));
 
                     setAnsweringTurnUI();
+                    ws.send(JSON.stringify({ type: 'drawing_completed' }));
                 });
             }
 
@@ -848,6 +918,8 @@
                 if (msg.type === 'next_turn') {
                     const currentTurn = msg.currentTurn;
                     const turnOrder = msg.turnOrder;
+                    const currentPhaseFromServer = msg.phase;
+
                     turnOrderDisplay.innerHTML = 'ターン順: ' + turnOrder.map(id => {
                         return id === currentTurn
                             ? `<span style="color: red; font-weight: bold;">${id}</span>`
@@ -857,12 +929,18 @@
 
                     // 必要に応じてUI切り替えもここで実行
                     if (currentTurn === myId) {
-                        // 自分のターンなら描画ターンUIに切り替え
-                        setDrawingTurnUI();
+                        // 自分のターン
+                        if (currentPhaseFromServer === 'drawing') {
+                            setDrawingTurnUI(); // 描画ターンUIに切り替え
+                        } else if (currentPhaseFromServer === 'answering') {
+                            setAnsweringTurnUI(); // 回答ターンUIに切り替え
+                        }
                     } else {
-                        // 他の人のターンならチャットモードなどにする
-                        setStandbyUI(currentTurn, '描画');
+                        // 他の人のターン（待機画面）
+                        // サーバーから送られてきたフェーズ情報に基づいて、待機メッセージを調整
+                        setStandbyUI(currentTurn, currentPhaseFromServer === 'drawing' ? '描画' : '回答');
                     }
+                    return; // next_turnの処理を終える
                 }
 
                 if (msg.type === 'chat') {
