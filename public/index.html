@@ -333,7 +333,7 @@
                 )
 
                 if (confirmed) {
-                    ws.send(JSON.stringify({ type: 'start', rounds: parseInt(round), turns: parseInt(turn) }))
+                    ws.send(JSON.stringify({ type: 'start' }))
 
                     gameStarted = true; //ゲーム開始状態にする(オガワ)
                     //ゲーム開始時は描画ターン(オガワ)
