@@ -606,18 +606,12 @@
                 timerDisplay.classList.add('hidden');
                 standbyMessageElement.classList.add('hidden');
                 sendPictureButton.classList.add('hidden');
-                undoButton.classList.add('hidden');
-                redoButton.classList.add('hidden');
-                clearCanvasButton.classList.add('hidden'); // クリアボタンも非表示に
-
+                
                 // キャンバスをクリア
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 receivedCtx.clearRect(0, 0, receivedCanvas.width, receivedCanvas.height);
                 canvas.classList.remove('hidden'); // 自分のキャンバスは表示
                 receivedCanvas.style.display = 'none'; // 受信キャンバスは非表示に戻す
-
-                // チャット履歴をクリア
-                messagesDiv.innerHTML = '';
 
                 // ゲーム状態フラグをリセット
                 gameStarted = false;
