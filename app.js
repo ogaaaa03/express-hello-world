@@ -230,20 +230,20 @@ function broadcast(message) {
 
 //ターンを進める(カワグチ)
 function advanceTurn() {
-  //ラウンド終了処理
-  gameConfig.totalTurnsElapsed++; // ターンを進めるたびに加算
-  console.log(`[サーバー] 経過総ターン数: ${gameConfig.totalTurnsElapsed} / ${gameConfig.rounds * gameConfig.turnsPerRound}`);
-
-  // ゲーム終了条件の判定
-  if (gameConfig.totalTurnsElapsed >= gameConfig.turnsPerRound * players.size) {
-    console.log('[サーバー] 設定された総ターン数に達しました。ゲームを終了します。');
-    broadcast(JSON.stringify({ type: 'game_end', message: 'ゲーム終了！設定されたターン数に達しました。' }));
-    resetGameState(); // ゲーム終了後に状態をリセット
-    return; // ゲーム終了のため、これ以上ターンを進めない
-  }
-
-  // 現在のフェーズが「回答中」の場合にのみ、次のプレイヤーへターンを進める
   if (currentPhase === 'answering') {
+    //ラウンド終了処理
+    gameConfig.totalTurnsElapsed++; // ターンを進めるたびに加算
+    console.log(`[サーバー] 経過総ターン数: ${gameConfig.totalTurnsElapsed} / ${gameConfig.rounds * gameConfig.turnsPerRound}`);
+
+    // ゲーム終了条件の判定
+    if (gameConfig.totalTurnsElapsed >= gameConfig.turnsPerRound * players.size) {
+      console.log('[サーバー] 設定された総ターン数に達しました。ゲームを終了します。');
+      broadcast(JSON.stringify({ type: 'game_end', message: 'ゲーム終了！設定されたターン数に達しました。' }));
+      resetGameState(); // ゲーム終了後に状態をリセット
+      return; // ゲーム終了のため、これ以上ターンを進めない
+    }
+
+    // 現在のフェーズが「回答中」の場合にのみ、次のプレイヤーへターンを進める
     currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
     if (currentTurnIndex === 0) {
       round++;
