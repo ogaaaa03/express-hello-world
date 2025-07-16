@@ -192,69 +192,71 @@
 </head>
 
 <body>
-    <div class="chat">
-        <ul class="messages"></ul>
-        <form class="form" id="chatForm">
-            <input class="input" id="chatInput" autocomplete="off" />
-            <button class="submit" id="chatSubmitButton">Send</button>
-        </form>
-    </div>
-
-    <div class="game-controls">
-        <!-- ラウンド数選択(スピンボタン方式)(カワグチ) -->
-        <label>
-            ラウンド数:
-            <input type="number" id="roundSelect" class="number-input" min="1" max="10" step="1" value="3">
-        </label>
-        <!-- ターン数選択(スピンボタン方式)(カワグチ) -->
-        <label style="margin-left: 20px;">
-            ターン数:
-            <input type="number" id="turnSelect" class="number-input" min="1" max="5" step="1" value="2">
-        </label>
-        <!-- ゲーム開始ボタン(カワグチ) -->
-        <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
-    </div>
-
-    <!-- ルームの状況(カワグチ) -->
-    <div id="gameStatus" style="font-size: 20px; font-weight: bold; margin: 10px 0;">
-        <span id="firstChar">最初の文字は </span>
-        <span id="playerCountDisplay"></span>
-        <br />
-        <!-- 誰のターンか(カワグチ) -->
-        <span id="currentTurnInfo"></span><span id="turnOrderDisplay" style="display: inline;"></span>
-    </div>
-
-    <!-- 時間制限の表示(オガワ) -->
-    <div id="timerDisplay" style="font-size: 24px; font-weight: bold; margin-bottom: 10px;"></div>
-
-    <p id="standbyMessage" class="hidden"></p>
-    <div id="drawingUI">
-
-        <!-- ふたつのキャンバス -->
-        <div class="canvases-container">
-            <canvas id="receivedCanvas" width="600" height="600"></canvas>
-            <canvas id="canvas" width="600" height="600"></canvas>
-            <!-- コンソールガイド用キャンバス(オタニ追加) -->
-            <canvas id="cursorCanvas" width="600" height="600"
-                style="position: absolute; pointer-events: none;"></canvas>
+    <div id="game-area">
+        <div class="chat">
+            <ul class="messages"></ul>
+            <form class="form" id="chatForm">
+                <input class="input" id="chatInput" autocomplete="off" />
+                <button class="submit" id="chatSubmitButton">Send</button>
+            </form>
         </div>
 
-        <div class="drawing-tools">
-            <!-- 線の太さ(オタニ追加) -->
+        <div class="game-controls">
+            <!-- ラウンド数選択(スピンボタン方式)(カワグチ) -->
             <label>
-                線の太さ:
-                <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
+                ラウンド数:
+                <input type="number" id="roundSelect" class="number-input" min="1" max="10" step="1" value="3">
             </label>
-            <!-- カラーピッカー(オタニ追加) -->
-            <input type="color" id="colorPicker" value="#000000">
-            <!-- 消しゴム(オタニ追加) -->
-            <button id="eraserToggle">消しゴム OFF</button>
-            <!-- Undo/Redo(オタニ追加) -->
-            <button id="undoBtn">↩</button>
-            <button id="redoBtn">↪</button>
+            <!-- ターン数選択(スピンボタン方式)(カワグチ) -->
+            <label style="margin-left: 20px;">
+                ターン数:
+                <input type="number" id="turnSelect" class="number-input" min="1" max="5" step="1" value="2">
+            </label>
+            <!-- ゲーム開始ボタン(カワグチ) -->
+            <button id="startButton" style="margin-left: 20px;">ゲーム開始</button>
+        </div>
 
-            <!-- sendPictureボタン追加(オガワ) -->
-            <button id="sendPictureButton">Send Picture</button>
+        <!-- ルームの状況(カワグチ) -->
+        <div id="gameStatus" style="font-size: 20px; font-weight: bold; margin: 10px 0;">
+            <span id="firstChar">最初の文字は </span>
+            <span id="playerCountDisplay"></span>
+            <br />
+            <!-- 誰のターンか(カワグチ) -->
+            <span id="currentTurnInfo"></span><span id="turnOrderDisplay" style="display: inline;"></span>
+        </div>
+
+        <!-- 時間制限の表示(オガワ) -->
+        <div id="timerDisplay" style="font-size: 24px; font-weight: bold; margin-bottom: 10px;"></div>
+
+        <p id="standbyMessage" class="hidden"></p>
+        <div id="drawingUI">
+
+            <!-- ふたつのキャンバス -->
+            <div class="canvases-container">
+                <canvas id="receivedCanvas" width="600" height="600"></canvas>
+                <canvas id="canvas" width="600" height="600"></canvas>
+                <!-- コンソールガイド用キャンバス(オタニ追加) -->
+                <canvas id="cursorCanvas" width="600" height="600"
+                    style="position: absolute; pointer-events: none;"></canvas>
+            </div>
+
+            <div class="drawing-tools">
+                <!-- 線の太さ(オタニ追加) -->
+                <label>
+                    線の太さ:
+                    <input type="range" id="lineWidthSlider" min="1" max="20" value="5">
+                </label>
+                <!-- カラーピッカー(オタニ追加) -->
+                <input type="color" id="colorPicker" value="#000000">
+                <!-- 消しゴム(オタニ追加) -->
+                <button id="eraserToggle">消しゴム OFF</button>
+                <!-- Undo/Redo(オタニ追加) -->
+                <button id="undoBtn">↩</button>
+                <button id="redoBtn">↪</button>
+
+                <!-- sendPictureボタン追加(オガワ) -->
+                <button id="sendPictureButton">Send Picture</button>
+            </div>
         </div>
     </div>
 
@@ -926,26 +928,96 @@
                     turnOrderDisplay.classList.add('hidden');
                     currentTurnInfo.classList.add('hidden');
                     playerCountDisplay.classList.add('hidden'); // 必要であれば
+                    standbyMessageElement.classList.add('hidden'); // 既存の待機メッセージも非表示にする
 
-                    // ゲーム終了メッセージを表示
-                    standbyMessageElement.classList.remove('hidden');
-                    standbyMessageElement.textContent = msg.message || "ゲーム終了！お疲れ様でした！"; // サーバーからのメッセージを使用
-                    standbyMessageElement.style.fontSize = "3em";
-                    standbyMessageElement.style.color = "purple";
+                    // --- ここから結果表示UIの構築 ---
+                    const resultsContainer = document.createElement('div');
+                    resultsContainer.id = 'gameResults';
+                    resultsContainer.style.textAlign = 'center';
+                    resultsContainer.style.marginTop = '20px';
+                    gameArea.appendChild(resultsContainer); // ゲームエリアに追加
+
+                    const gameEndTitle = document.createElement('h2');
+                    gameEndTitle.textContent = 'ゲーム終了！結果発表！ 🎉';
+                    gameEndTitle.style.color = '#333';
+                    gameEndTitle.style.marginBottom = '30px';
+                    resultsContainer.appendChild(gameEndTitle);
+
+                    if (msg.gameRecord && msg.gameRecord.length > 0) {
+                        const resultsList = document.createElement('div');
+                        resultsList.style.display = 'flex';
+                        resultsList.style.flexWrap = 'wrap';
+                        resultsList.style.justifyContent = 'center';
+                        resultsList.style.gap = '20px'; // 要素間のスペース
+                        resultsContainer.appendChild(resultsList);
+
+                        msg.gameRecord.forEach((record, index) => {
+                            const turnResultDiv = document.createElement('div');
+                            turnResultDiv.style.border = '1px solid #ccc';
+                            turnResultDiv.style.padding = '15px';
+                            turnResultDiv.style.borderRadius = '8px';
+                            turnResultDiv.style.width = '280px'; // カード形式で表示
+                            turnResultDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                            turnResultDiv.style.backgroundColor = '#fff';
+
+                            const turnTitle = document.createElement('h3');
+                            turnTitle.textContent = `ターン ${index + 1} (${record.turnPlayerId}さんの描画)`;
+                            turnTitle.style.color = '#555';
+                            turnTitle.style.marginBottom = '10px';
+                            turnResultDiv.appendChild(turnTitle);
+
+                            // 画像の表示
+                            const img = document.createElement('img');
+                            img.src = record.imageData;
+                            img.style.maxWidth = '100%';
+                            img.style.height = 'auto';
+                            img.style.border = '1px solid #eee';
+                            img.style.marginBottom = '10px';
+                            turnResultDiv.appendChild(img);
+
+                            // 回答の表示
+                            const answerText = document.createElement('p');
+                            if (record.answer) {
+                                answerText.innerHTML = `**回答:** ${record.answer} (${record.answerPlayerId}さん)`;
+                                answerText.style.color = '#007bff';
+                                answerText.style.fontWeight = 'bold';
+                            } else {
+                                answerText.textContent = '回答なし';
+                                answerText.style.color = '#dc3545';
+                            }
+                            turnResultDiv.appendChild(answerText);
+
+                            resultsList.appendChild(turnResultDiv);
+                        });
+                    } else {
+                        const noResults = document.createElement('p');
+                        noResults.textContent = 'ゲーム結果の記録がありません。';
+                        noResults.style.color = '#888';
+                        resultsContainer.appendChild(noResults);
+                    }
+
+                    // --- リスタートボタンの追加 ---
+                    const restartButton = document.createElement('button');
+                    restartButton.textContent = 'もう一度プレイする';
+                    restartButton.style.marginTop = '30px';
+                    restartButton.style.padding = '10px 20px';
+                    restartButton.style.fontSize = '1.2em';
+                    restartButton.style.cursor = 'pointer';
+                    restartButton.style.backgroundColor = '#28a745';
+                    restartButton.style.color = 'white';
+                    restartButton.style.border = 'none';
+                    restartButton.style.borderRadius = '5px';
+                    restartButton.onclick = () => {
+                        location.reload(); // ページをリロードして初期状態に戻す
+                    };
+                    resultsContainer.appendChild(restartButton);
 
                     // ゲーム状態をリセット
                     gameStarted = false;
                     isDrawingTurn = false;
                     isAnsweringTurn = false;
-                    // 必要であれば、answers配列やdrawnImages配列もクリア
-
-                    // ページをリロードして初期状態に戻すボタンなどを追加しても良いでしょう
-                    const restartButton = document.createElement('button');
-                    restartButton.textContent = 'もう一度プレイする';
-                    restartButton.onclick = () => {
-                        initializeUI(); // ページをリロードして初期状態に戻す
-                    };
-                    standbyMessageElement.parentNode.insertBefore(restartButton, standbyMessageElement.nextSibling);
+                    // answers配列やdrawnImages配列は、次のゲームのためにクリアされるべきです
+                    // これらの配列はクライアントサイドでのみ使用されているため、リロードでクリアされます
 
                     return;
                 }
