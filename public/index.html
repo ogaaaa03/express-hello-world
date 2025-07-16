@@ -943,7 +943,7 @@
                     const restartButton = document.createElement('button');
                     restartButton.textContent = 'もう一度プレイする';
                     restartButton.onclick = () => {
-                        location.reload(); // ページをリロードして初期状態に戻す
+                        initializeUI(); // ページをリロードして初期状態に戻す
                     };
                     standbyMessageElement.parentNode.insertBefore(restartButton, standbyMessageElement.nextSibling);
 
