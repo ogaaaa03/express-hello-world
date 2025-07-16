@@ -64,6 +64,15 @@ app.ws('/ws', (ws, req) => {
     }
 
     if (msg.type === 'start') {
+      //エラーメッセージ(オガワ)
+      if (gameStarted) {
+        ws.send(JSON.stringify({ type: 'error', message: 'ゲームはすでに開始されています。' }));
+        return;
+      }
+      if (players.size === 0) {
+        ws.send(JSON.stringify({ type: 'error', message: 'プレイヤーがいません。' }));
+        return;
+      }
 
       // クライアントから送られてきたラウンド数とターン数を受け取る(オガワ)
       gameConfig.rounds = parseInt(msg.rounds);
@@ -230,8 +239,8 @@ function broadcast(message) {
 
 //ターンを進める(カワグチ)
 function advanceTurn() {
+  // 現在のフェーズが「回答中」の場合にのみ、次のプレイヤーへターンを進める
   if (currentPhase === 'answering') {
-    //ラウンド終了処理
     gameConfig.totalTurnsElapsed++; // ターンを進めるたびに加算
     console.log(`[サーバー] 経過総ターン数: ${gameConfig.totalTurnsElapsed} / ${gameConfig.rounds * gameConfig.turnsPerRound}`);
 
@@ -243,7 +252,6 @@ function advanceTurn() {
       return; // ゲーム終了のため、これ以上ターンを進めない
     }
 
-    // 現在のフェーズが「回答中」の場合にのみ、次のプレイヤーへターンを進める
     currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
     if (currentTurnIndex === 0) {
       round++;
